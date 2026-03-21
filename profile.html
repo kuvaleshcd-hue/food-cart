@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Profile — Food Cart</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background:linear-gradient(to bottom right,#828282,#898787); min-height:100vh; font-family:'Inter',sans-serif; }
+    .glass { background:rgba(255,255,255,0.15); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.25); }
+    .neon-text { background:linear-gradient(90deg,#ff6ec7,#ffd1d1,#ff6ec7); -webkit-background-clip:text; color:transparent; font-weight:700; }
+    input { background:rgba(255,255,255,0.12); color:#fff; border:1.5px solid rgba(255,255,255,0.3); outline:none; width:100%; padding:10px 14px; border-radius:10px; transition:0.3s; }
+    input::placeholder { color:rgba(255,255,255,0.5); }
+    input:focus { border-color:#ff6ec7; box-shadow:0 0 10px #ff6ec7; }
+  </style>
+</head>
+<body class="text-white">
+
+  <nav class="glass p-4 flex justify-between items-center sticky top-0 z-10">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-yellow-400 flex items-center justify-center font-extrabold text-white">F</div>
+      <h1 class="text-xl font-bold neon-text">My Profile</h1>
+    </div>
+    <div class="flex gap-3">
+      <a href="index.html"  class="px-3 py-2 rounded-lg hover:bg-white/10 text-sm">🏠 Home</a>
+      <a href="orders.html" class="px-3 py-2 rounded-lg hover:bg-white/10 text-sm">📦 Orders</a>
+    </div>
+  </nav>
+
+  <main class="max-w-lg mx-auto px-4 py-10 space-y-6">
+
+    <!-- Avatar + stats -->
+    <div class="glass rounded-2xl p-6 text-center">
+      <div id="avatarCircle"
+        class="w-20 h-20 rounded-full bg-gradient-to-br from-pink-500 to-yellow-400 flex items-center justify-center text-3xl font-bold mx-auto mb-3">
+        ?
+      </div>
+      <h2 class="text-2xl font-bold" id="displayName">Loading...</h2>
+      <p class="text-gray-300 text-sm mt-1" id="userEmail"></p>
+      <div class="flex justify-center gap-10 mt-5">
+        <div class="text-center">
+          <p class="text-2xl font-bold neon-text" id="orderCount">—</p>
+          <p class="text-xs text-gray-400">Orders</p>
+        </div>
+        <div class="text-center">
+          <p class="text-2xl font-bold neon-text" id="totalSpent">—</p>
+          <p class="text-xs text-gray-400">Total Spent</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Saved address -->
+    <div class="glass rounded-2xl p-6">
+      <h3 class="font-semibold mb-3">📍 Saved Delivery Address</h3>
+      <input id="savedAddress" type="text" placeholder="Add your default delivery address" />
+      <button id="saveAddressBtn"
+        class="mt-3 w-full py-2 rounded-lg font-semibold"
+        style="background:linear-gradient(90deg,#f472b6,#facc15);color:#000">
+        Save Address
+      </button>
+    </div>
+
+    <!-- Account info -->
+    <div class="glass rounded-2xl p-6">
+      <h3 class="font-semibold mb-3">⚙️ Account</h3>
+      <p class="text-sm text-gray-300 mb-4">Signed in with email/password via Firebase Auth.</p>
+      <a href="orders.html"
+        class="block text-center py-2 rounded-lg bg-white/10 hover:bg-white/20 transition text-sm mb-3">
+        View Order History →
+      </a>
+      <button id="logoutBtn"
+        class="w-full py-2 rounded-lg bg-red-500/20 hover:bg-red-500/40 text-red-300 font-semibold transition text-sm">
+        Logout
+      </button>
+    </div>
+
+  </main>
+
+  <footer class="text-center py-6 text-gray-400 text-sm">© Food Cart — Taste the Future 🍴</footer>
+
+  <script type="module">
+    import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyCZQl-RwRK7KPLpVDK8a1WzbptcX8HyBzU",
+      authDomain:        "food-cart-login.firebaseapp.com",
+      projectId:         "food-cart-login",
+      storageBucket:     "food-cart-login.firebasestorage.app",
+      messagingSenderId: "1080008629691",
+      appId:             "1:1080008629691:web:d9ce40413e8772b250b89e"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    onAuthStateChanged(auth, async (user) => {
+      if(!user){ window.location.replace("login.html"); return; }
+
+      // Auth info
+      document.getElementById('avatarCircle').textContent = (user.displayName||user.email)[0].toUpperCase();
+      document.getElementById('displayName').textContent  = user.displayName || 'No name set';
+      document.getElementById('userEmail').textContent    = user.email;
+
+      // Firestore profile (saved address)
+      const profileRef  = doc(db,'users',user.uid);
+      const profileSnap = await getDoc(profileRef);
+      if(profileSnap.exists()){
+        document.getElementById('savedAddress').value = profileSnap.data().address || '';
+      }
+
+      // Order stats
+      try{
+        const q    = query(collection(db,'orders'), where("userId","==",user.uid));
+        const snap = await getDocs(q);
+        let totalSpent = 0;
+        snap.forEach(d=> totalSpent += d.data().total || 0);
+        document.getElementById('orderCount').textContent = snap.size;
+        document.getElementById('totalSpent').textContent = '₹' + totalSpent;
+      } catch(e){ console.error(e); }
+
+      // Save address
+      document.getElementById('saveAddressBtn').addEventListener('click', async () => {
+        const address = document.getElementById('savedAddress').value.trim();
+        await setDoc(profileRef, { address, email:user.email, name:user.displayName }, { merge:true });
+        alert("Address saved ✅");
+      });
+
+      // Logout
+      document.getElementById('logoutBtn').addEventListener('click', () => {
+        signOut(auth).then(()=> window.location.replace("login.html"));
+      });
+    });
+  </script>
+</body>
+</html>

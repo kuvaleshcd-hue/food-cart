@@ -1,0 +1,260 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Food Cart — Checkout</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+  <style>
+    body { font-family:'Inter',sans-serif; background:linear-gradient(to bottom right,#828282,#898787); color:#f5f5f5; min-height:100vh; }
+    .glass { background:rgba(255,255,255,0.15); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.25); }
+    .neon-text { background:linear-gradient(90deg,#ff6ec7 0%,#ffd1d1 40%,#ff6ec7 100%); -webkit-background-clip:text; color:transparent; font-weight:700; }
+    .btn-primary { background:linear-gradient(90deg,#f472b6,#facc15); color:#000; font-weight:600; transition:0.3s; }
+    .btn-primary:hover { transform:scale(1.05); }
+    label { display:block; font-size:0.9rem; color:#ffb6f9; margin-bottom:4px; }
+    input,select { background:rgba(255,255,255,0.12); color:#fff; border:1.5px solid rgba(255,255,255,0.4); outline:none; width:100%; padding:10px 14px; border-radius:10px; transition:0.3s; caret-color:#ff6ec7; }
+    input::placeholder { color:rgba(255,255,255,0.7); }
+    input:focus,select:focus { border-color:#ff6ec7; box-shadow:0 0 10px #ff6ec7,0 0 20px #ffd1d1; background:rgba(255,255,255,0.25); }
+    select option { background:#1a1a1a; color:#fff; }
+    .neon-box { animation:glow 2s ease-in-out infinite alternate; }
+    @keyframes glow { from{box-shadow:0 0 5px #ff6ec7,0 0 15px #ffd1d1;} to{box-shadow:0 0 15px #ff6ec7,0 0 35px #ffd1d1;} }
+    #paymentDetails,#paymentDetails * { position:relative; z-index:50; pointer-events:auto !important; }
+    #statusModal.hidden { display:none !important; pointer-events:none !important; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <nav class="glass shadow-lg p-4 flex justify-between items-center sticky top-0 z-10">
+    <div class="flex items-center gap-3">
+      <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-yellow-400 flex items-center justify-center text-lg font-extrabold text-white shadow-xl">F</div>
+      <h1 class="text-2xl font-bold neon-text">Food Cart</h1>
+    </div>
+    <div class="flex gap-3">
+      <a href="index.html"   class="px-4 py-2 rounded-lg text-white hover:bg-white/10 transition">🏠 Home</a>
+      <a href="hotels.html"  class="px-4 py-2 rounded-lg text-white hover:bg-white/10 transition">🏨 Hotels</a>
+      <a href="orders.html"  class="px-4 py-2 rounded-lg text-white hover:bg-white/10 transition">📦 Orders</a>
+      <a href="profile.html" class="px-4 py-2 rounded-lg text-white hover:bg-white/10 transition">👤 Profile</a>
+    </div>
+  </nav>
+
+  <main class="flex-grow container mx-auto px-6 py-10">
+    <h2 class="text-4xl font-bold neon-text text-center mb-10">Your Cart 🛒</h2>
+
+    <div id="cartContainer" class="max-w-3xl mx-auto glass p-6 rounded-2xl shadow-xl neon-box">
+      <div id="cartItems" class="divide-y divide-gray-400/30"></div>
+
+      <div class="flex justify-between mt-6 text-lg font-semibold">
+        <span>Total:</span>
+        <span>₹<span id="cartTotal">0</span></span>
+      </div>
+
+      <div class="mt-6">
+        <label for="customerAddress">Delivery Address</label>
+        <input id="customerAddress" type="text" placeholder="Enter your delivery address" />
+      </div>
+
+      <div class="mt-6">
+        <label for="paymentMethod">Payment Method</label>
+        <select id="paymentMethod">
+          <option value="card">Credit/Debit Card</option>
+          <option value="upi">UPI</option>
+          <option value="cod">Cash on Delivery</option>
+        </select>
+        <div id="paymentDetails" class="mt-3"></div>
+      </div>
+
+      <div class="flex gap-3 mt-6">
+        <button id="clearCart"   class="flex-1 bg-gray-300 text-black rounded-lg py-2 font-semibold hover:bg-gray-200">Clear</button>
+        <button id="checkoutBtn" class="flex-1 btn-primary rounded-lg py-2">Place Order</button>
+      </div>
+    </div>
+
+    <p id="emptyMsg" class="text-center text-gray-300 mt-10 hidden">Your cart is empty 😔</p>
+  </main>
+
+  <!-- Order Status Modal -->
+  <div id="statusModal" class="hidden fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+    <div class="glass p-6 rounded-2xl w-96 text-center shadow-lg">
+      <h3 class="text-2xl font-bold mb-4 neon-text">Order Status 🚚</h3>
+      <div class="space-y-3 text-lg">
+        <div class="status-step opacity-0">🥣 Preparing your food...</div>
+        <div class="status-step opacity-0">🚴 Out for delivery...</div>
+        <div class="status-step opacity-0">🏠 Delivered!</div>
+      </div>
+      <button onclick="document.getElementById('statusModal').classList.add('hidden')"
+        class="mt-4 px-4 py-2 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20">Close</button>
+    </div>
+  </div>
+
+  <footer class="text-center py-6 text-gray-400 text-sm">© Food Cart — Taste the Future 🍴</footer>
+
+  <script type="module">
+    import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, doc, onSnapshot, serverTimestamp }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyCZQl-RwRK7KPLpVDK8a1WzbptcX8HyBzU",
+      authDomain:        "food-cart-login.firebaseapp.com",
+      projectId:         "food-cart-login",
+      storageBucket:     "food-cart-login.firebasestorage.app",
+      messagingSenderId: "1080008629691",
+      appId:             "1:1080008629691:web:d9ce40413e8772b250b89e"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    // ✅ Auth guard
+    let currentUser = null;
+    onAuthStateChanged(auth, (user) => {
+      if (!user) { window.location.replace("login.html"); return; }
+      currentUser = user;
+    });
+
+    let cart = JSON.parse(localStorage.getItem('demoCart') || '{}');
+    function saveCart(){ localStorage.setItem('demoCart', JSON.stringify(cart)); }
+
+    function updateCartUI(){
+      const itemsDiv = document.getElementById('cartItems');
+      const totalEl  = document.getElementById('cartTotal');
+      const emptyMsg = document.getElementById('emptyMsg');
+      itemsDiv.innerHTML = '';
+      let total = 0;
+      const items = Object.values(cart);
+      emptyMsg.classList.toggle('hidden', items.length > 0);
+      items.forEach(it => {
+        total += it.price * it.qty;
+        const row = document.createElement('div');
+        row.className = "flex justify-between items-center py-3";
+        row.innerHTML = `
+          <div>
+            <h3 class="font-semibold text-lg">${it.name}</h3>
+            <p class="text-sm text-gray-300">₹${it.price} × ${it.qty}</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button class="decrease bg-gray-700 text-white px-2 rounded" data-id="${it.id}">−</button>
+            <span>${it.qty}</span>
+            <button class="increase bg-gray-700 text-white px-2 rounded" data-id="${it.id}">+</button>
+          </div>`;
+        itemsDiv.appendChild(row);
+      });
+      totalEl.textContent = total;
+      saveCart();
+      renderPaymentForm();
+    }
+
+    function renderPaymentForm(){
+      const pm   = document.getElementById('paymentMethod').value;
+      const cont = document.getElementById('paymentDetails');
+      cont.innerHTML = '';
+      if(pm==='card'){
+        cont.innerHTML=`
+          <div class="space-y-3 relative z-50">
+            <input id="cardNumber" placeholder="Card number (xxxx xxxx xxxx xxxx)" maxlength="19"/>
+            <div class="flex gap-2">
+              <input id="cardExpiry" placeholder="MM/YY" maxlength="5" style="width:50%"/>
+              <input id="cardCVV"    placeholder="CVV"   maxlength="3" style="width:50%"/>
+            </div>
+          </div>`;
+      } else if(pm==='upi'){
+        cont.innerHTML=`
+          <div class="space-y-2 relative z-50">
+            <input id="upiId" placeholder="yourid@upi" autocomplete="off"/>
+            <div class="text-sm text-white/70">Mock UPI flow — demo only.</div>
+          </div>`;
+      } else {
+        cont.innerHTML=`<div class="p-3 rounded-lg bg-white/5 text-white/80">💵 Pay with Cash on Delivery. Keep exact change ready.</div>`;
+      }
+    }
+
+    document.getElementById('paymentMethod').addEventListener('change', renderPaymentForm);
+    document.getElementById('clearCart').addEventListener('click', () => { cart={}; updateCartUI(); });
+    document.addEventListener('click', (e) => {
+      if(e.target.classList.contains('increase')){ const id=e.target.dataset.id; cart[id].qty++; }
+      else if(e.target.classList.contains('decrease')){ const id=e.target.dataset.id; cart[id].qty--; if(cart[id].qty<=0) delete cart[id]; }
+      updateCartUI();
+    });
+
+    // ✅ Checkout — saves to Firestore + real-time status
+    document.getElementById('checkoutBtn').addEventListener('click', async () => {
+      const address       = document.getElementById('customerAddress').value.trim();
+      const paymentMethod = document.getElementById('paymentMethod').value;
+
+      if(!address) return alert("Please enter delivery address!");
+      if(Object.keys(cart).length===0) return alert("Your cart is empty!");
+
+      if(paymentMethod==='upi'){
+        const upiId = document.getElementById('upiId')?.value.trim();
+        if(!upiId) return alert("Please enter your UPI ID!");
+      } else if(paymentMethod==='card'){
+        const cardNumber = document.getElementById('cardNumber')?.value.trim();
+        const cardExpiry = document.getElementById('cardExpiry')?.value.trim();
+        const cardCVV    = document.getElementById('cardCVV')?.value.trim();
+        if(!cardNumber||!cardExpiry||!cardCVV) return alert("Please fill all card details!");
+      }
+
+      alert("Payment successful ✅");
+
+      // ✅ Save to Firestore
+      let orderId = null;
+      if(currentUser){
+        try{
+          const total = Object.values(cart).reduce((s,i)=>s+i.price*i.qty,0);
+          const ref = await addDoc(collection(db,'orders'),{
+            userId:        currentUser.uid,
+            userEmail:     currentUser.email,
+            items:         Object.values(cart),
+            total,
+            address,
+            paymentMethod,
+            status:        'preparing',
+            createdAt:     serverTimestamp()
+          });
+          orderId = ref.id;
+          localStorage.setItem('lastOrderId', orderId);
+        } catch(e){ console.error('Order save failed:', e); }
+      }
+
+      cart = {}; saveCart(); updateCartUI();
+      runOrderStatus(orderId);
+    });
+
+    // ✅ Real-time order status via onSnapshot
+    function runOrderStatus(orderId){
+      const modal = document.getElementById('statusModal');
+      modal.classList.remove('hidden');
+      const steps = document.querySelectorAll('.status-step');
+      steps.forEach(s => gsap.to(s,{opacity:0,y:10,duration:0}));
+
+      const statusMap = { preparing:0, 'out for delivery':1, delivered:2 };
+      let unsubscribe = null;
+
+      if(orderId){
+        const orderRef = doc(db,'orders',orderId);
+        unsubscribe = onSnapshot(orderRef, (snap) => {
+          if(!snap.exists()) return;
+          const status = snap.data().status;
+          const idx    = statusMap[status] ?? 0;
+          for(let i=0;i<=idx;i++){
+            gsap.to(steps[i],{opacity:1,y:0,duration:0.6,ease:'power2.out',delay:i*0.2});
+          }
+          if(status==='delivered'){
+            setTimeout(()=>{ modal.classList.add('hidden'); alert("🎉 Order delivered!"); if(unsubscribe) unsubscribe(); },1500);
+          }
+        });
+      } else {
+        // Fallback fake animation if Firestore save failed
+        steps.forEach((s,i)=> setTimeout(()=>gsap.to(s,{opacity:1,y:0,duration:0.6,ease:'power2.out'}),i*2000));
+        setTimeout(()=>{ modal.classList.add('hidden'); alert("🎉 Order delivered successfully!"); }, steps.length*2000+1500);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', updateCartUI);
+  </script>
+</body>
+</html>

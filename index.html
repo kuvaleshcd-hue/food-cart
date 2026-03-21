@@ -1,0 +1,512 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Food Cart — Gen Z Edition</title>
+
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')   /* ✅ fixed: was service-worker.js */
+          .then(() => console.log('SW registered'))
+          .catch(err => console.log('SW failed:', err));
+      });
+    }
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://unpkg.com/vanilla-tilt@1.7.2/dist/vanilla-tilt.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/swiper@8/swiper-bundle.min.css" />
+  <script src="https://unpkg.com/swiper@8/swiper-bundle.min.js"></script>
+  <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+  <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <style>
+    :root { --muted: #94a3b8; }
+    html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; }
+    body { background: #8a8888; color: #333; }
+    .glass {
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgb(255,247,247);
+      color: #efeeee;
+    }
+    .neon-text {
+      background: linear-gradient(90deg,#ff6ec7 0%,#ffd1d1 40%,#ff6ec7 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      font-weight: 700;
+    }
+    .tag { background: linear-gradient(90deg,#4ade80,#06b6d4); padding:4px 8px; border-radius:999px; font-weight:600; color:#04263b; }
+    .status-step { opacity:0; transform:translateY(12px); }
+    .pill { padding:6px 10px; border-radius:999px; background:rgba(255,255,255,0.15); color:#333; font-weight:500; }
+    @media(max-width:768px){ .desktop-only{ display:none; } }
+    select,option { background-color:#1e293b; color:#f8fafc; }
+    select:focus { outline:none; border-color:#f472b6; box-shadow:0 0 0 2px rgba(244,114,182,0.3); }
+  </style>
+</head>
+
+<body>
+  <!-- ✅ Single unified navbar (removed duplicate orange nav) -->
+  <header class="sticky top-0 z-50 backdrop-blur glass border-b border-white/5">
+    <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-yellow-400 flex items-center justify-center text-lg font-extrabold text-white shadow-xl">F</div>
+        <div>
+          <div class="text-white font-semibold">FoodCart</div>
+          <div class="text-xs text-[color:var(--muted)] -mt-1">Cart it like it's hot</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <div class="hidden md:flex items-center gap-3">
+          <input id="globalSearch" class="px-4 py-2 rounded-full bg-transparent border border-white/20 placeholder:text-white/50 text-white w-72" placeholder="Search dishes, restaurants...">
+          <button id="explore" class="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold hover:scale-105 transition">Explore</button>
+        </div>
+        <button id="favoritesBtn" class="p-2 rounded-lg hover:bg-white/10 text-white desktop-only">❤</button>
+        <!-- ✅ Profile button now links to profile.html -->
+        <button id="profileBtn" class="p-2 rounded-lg hover:bg-white/10 text-white desktop-only" onclick="window.location.href='profile.html'">👤</button>
+        <button id="cartBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-violet-500 to-indigo-500 shadow-lg text-white">
+          🛒 <span id="cartCount" class="text-sm font-semibold">0</span>
+        </button>
+        <button onclick="window.location.href='hotels.html'" class="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 text-sm">Hotels</button>
+        <!-- ✅ User name display + logout -->
+        <span id="user-name" class="text-sm text-white/80 hidden md:block"></span>
+        <button onclick="logoutUser()" class="text-sm bg-white/10 text-white px-3 py-1.5 rounded-lg hover:bg-white/20 transition">Logout</button>
+        <button id="mobileToggle" class="md:hidden p-2 text-white">☰</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="max-w-7xl mx-auto px-4 py-10 grid md:grid-cols-2 gap-8 items-center">
+    <div>
+      <h1 class="text-5xl font-extrabold neon-text leading-tight">Hot. Fresh. Fast.<br><span class="text-white/90">Delivered to your door</span></h1>
+      <p class="mt-4 text-[#ff99ff]">We track food carts better than your ex tracked your Insta stories</p>
+      <div class="mt-6 flex gap-3">
+        <button id="quickOrder" class="px-6 py-3 rounded-full bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-bold hover:scale-105 transform transition">Quick Order</button>
+        <button id="viewMenu" class="px-6 py-3 rounded-full border border-white/10 text-white hover:bg-white/5">View Full Menu</button>
+      </div>
+      <div class="mt-6 flex gap-3 items-center flex-wrap">
+        <div class="tag">New</div>
+        <div class="pill">30% off on first order</div>
+        <div class="pill">Free delivery above ₹299</div>
+      </div>
+    </div>
+    <div class="relative w-full max-w-6xl mx-auto">
+      <div class="swiper mySwiper rounded-3xl overflow-hidden shadow-2xl">
+        <div class="swiper-wrapper">
+          <div class="swiper-slide"><img src="https://www.abeautifulplate.com/wp-content/uploads/2015/08/the-best-homemade-margherita-pizza-1-4.jpg" alt="Pizza" class="w-full h-80 object-cover"></div>
+          <div class="swiper-slide"><img src="https://images.unsplash.com/photo-1550547660-d9450f859349" alt="Burger" class="w-full h-80 object-cover"></div>
+          <div class="swiper-slide"><img src="https://images.unsplash.com/photo-1626082927389-6c88f405a05a" alt="South Indian" class="w-full h-80 object-cover"></div>
+        </div>
+        <div class="swiper-pagination"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CATEGORIES -->
+  <section class="max-w-7xl mx-auto px-4 py-8">
+    <div class="flex gap-3 overflow-x-auto pb-3">
+      <button class="category card glass px-4 py-2 rounded-2xl" data-cat="all">All</button>
+      <button class="category card glass px-4 py-2 rounded-2xl" data-cat="pizza">Pizza</button>
+      <button class="category card glass px-4 py-2 rounded-2xl" data-cat="burger">Burger</button>
+      <button class="category card glass px-4 py-2 rounded-2xl" data-cat="fastfood">Fast Food</button>
+      <button class="category card glass px-4 py-2 rounded-2xl" data-cat="sweets">Desserts</button>
+      <button class="category card glass px-4 py-2 rounded-2xl" data-cat="south">South Indian</button>
+    </div>
+  </section>
+
+  <!-- MENU GRID -->
+  <section id="menuSection">
+    <div id="menu" class="max-w-7xl mx-auto px-4 pb-16 grid md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+  </section>
+
+  <!-- CART SIDE PANEL -->
+  <aside id="cartPanel" class="fixed right-6 top-24 w-80 bg-gradient-to-br from-slate-800/95 to-slate-700/90 rounded-2xl p-4 hidden z-[9999] shadow-lg border border-white/10">
+    <div class="flex items-center justify-between mb-3">
+      <div class="font-semibold text-white text-lg">Your Cart</div>
+      <button id="closeCartPanel" class="text-gray-300 hover:text-white bg-white/10 hover:bg-white/20 rounded-full w-7 h-7 flex items-center justify-center transition">✕</button>
+    </div>
+    <div id="cartItems" class="space-y-3 max-h-72 overflow-y-auto mb-3 text-white"></div>
+    <div class="flex items-center justify-between font-bold text-white">Total: ₹<span id="cartTotal">0</span></div>
+    <div class="mt-4 grid grid-cols-2 gap-3">
+      <button id="goToCheckout" class="px-3 py-2 rounded-lg bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold">Checkout</button>
+      <button id="clearCart" class="px-3 py-2 rounded-lg bg-gradient-to-r from-red-500 to-red-700 text-white font-semibold">Clear</button>
+    </div>
+  </aside>
+
+  <!-- CHECKOUT MODAL -->
+  <div id="checkoutModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+    <div class="bg-gradient-to-br from-slate-900 to-slate-800 glass rounded-2xl p-6 w-11/12 md:w-2/3 lg:w-1/2 max-h-screen overflow-y-auto">
+      <div class="grid md:grid-cols-2 gap-6">
+        <div>
+          <h3 class="text-xl font-bold neon-text">Checkout</h3>
+          <div class="mt-4">
+            <label class="text-sm text-[color:var(--muted)]">Delivery Address</label>
+            <input id="customerAddress" class="w-full p-3 rounded-lg mt-2 bg-transparent border border-white/20 text-white placeholder:text-white/50" placeholder="Enter full address" />
+          </div>
+          <div class="mt-4">
+            <label class="text-sm text-[color:var(--muted)]">Payment Method</label>
+            <select id="paymentMethod" class="w-full p-3 rounded-lg mt-2 bg-transparent border border-white/20">
+              <option value="card">Card (Credit/Debit)</option>
+              <option value="upi">UPI</option>
+              <option value="cash">Cash on Delivery</option>
+            </select>
+          </div>
+          <div id="paymentDetails" class="mt-4"></div>
+          <div class="mt-6 flex gap-3">
+            <button id="payNow" class="px-4 py-3 rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 text-white font-semibold">Pay Now</button>
+            <button id="cancelCheckoutBtn" class="px-4 py-3 rounded-full border text-white">Cancel</button>
+          </div>
+        </div>
+        <div>
+          <h4 class="font-semibold text-white">Order Summary</h4>
+          <div id="checkoutItems" class="mt-3 space-y-2 max-h-64 overflow-y-auto text-white"></div>
+          <div class="mt-4 flex items-center justify-between font-bold text-white">Total: ₹<span id="checkoutTotal">0</span></div>
+          <div class="mt-6">
+            <h5 class="text-sm text-[color:var(--muted)]">Note for restaurant</h5>
+            <textarea id="orderNote" placeholder="Add a note (optional)" class="w-full mt-2 p-3 rounded-lg bg-transparent border border-white/20 text-white placeholder:text-white/50"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ORDER STATUS MODAL -->
+  <div id="statusModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60">
+    <div class="bg-slate-900 p-6 rounded-2xl glass w-80 text-center">
+      <h3 class="text-xl font-bold neon-text">Order Progress 🚚</h3>
+      <div id="statusSteps" class="mt-4 text-left space-y-3">
+        <div class="status-step text-white" data-step="placed">✅ Order Placed</div>
+        <div class="status-step text-white" data-step="preparing">👨‍🍳 Being Prepared</div>
+        <div class="status-step text-white" data-step="ontheway">🚚 Out for Delivery</div>
+        <div class="status-step text-white" data-step="arrived">🏠 Arrived</div>
+        <div class="status-step text-white" data-step="done">🎉 Enjoy your meal!</div>
+      </div>
+      <button onclick="document.getElementById('statusModal').classList.add('hidden')"
+        class="mt-5 px-4 py-2 rounded-lg bg-white/10 text-white text-sm hover:bg-white/20">Close</button>
+    </div>
+  </div>
+
+  <!-- TRACKING MAP -->
+  <div id="tracking" class="hidden fixed inset-0 z-40 bg-black/70 flex items-center justify-center">
+    <div class="w-11/12 h-4/5 rounded-2xl overflow-hidden">
+      <div id="trackingMap" class="w-full h-full"></div>
+    </div>
+  </div>
+
+  <!-- TOASTS -->
+  <div id="toast" class="fixed right-4 bottom-4 z-50 flex flex-col gap-2"></div>
+
+  <footer class="mt-12 py-6 text-center text-[color:var(--muted)]">© FoodCart — Taste the Future 🍴</footer>
+
+  <!-- ✅ Single ES module script — NO SDK v8 scripts below -->
+  <script type="module">
+    import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyCZQl-RwRK7KPLpVDK8a1WzbptcX8HyBzU",
+      authDomain:        "food-cart-login.firebaseapp.com",
+      projectId:         "food-cart-login",
+      storageBucket:     "food-cart-login.firebasestorage.app",
+      messagingSenderId: "1080008629691",
+      appId:             "1:1080008629691:web:d9ce40413e8772b250b89e"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    // ✅ Auth guard — redirect to login if not logged in
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.replace("login.html");
+      } else {
+        const nameEl = document.getElementById("user-name");
+        if (nameEl) nameEl.textContent = user.displayName || user.email;
+      }
+    });
+
+    // ✅ Logout exposed globally for onclick
+    window.logoutUser = function () {
+      signOut(auth).then(() => window.location.replace("login.html"));
+    };
+
+    // ────────────────────────────────────────────
+    // Sample data
+    // ────────────────────────────────────────────
+    const data = [
+      { id:'r1', name:'Neon Pizza',   rating:4.6, category:'pizza',  img:'https://www.abeautifulplate.com/wp-content/uploads/2015/08/the-best-homemade-margherita-pizza-1-4.jpg',
+        items:[
+          { id:'p1', name:'Margherita',  price:249, img:'https://www.abeautifulplate.com/wp-content/uploads/2015/08/the-best-homemade-margherita-pizza-1-4.jpg' },
+          { id:'p2', name:'Pepperoni',   price:329, img:'https://tse1.mm.bing.net/th/id/OIP.rdZaeBfwLSjr_qgSU0qXuwHaHa?rs=1&pid=ImgDetMain' },
+          { id:'p3', name:'Garlic Bread',price:99,  img:'https://www.ambitiouskitchen.com/wp-content/uploads/2023/02/Garlic-Bread-4.jpg' }
+        ]
+      },
+      { id:'r2', name:'Burger Bash',  rating:4.4, category:'burger', img:'https://images.unsplash.com/photo-1550547660-d9450f859349',
+        items:[
+          { id:'b1', name:'Classic Burger',price:179, img:'https://images.unsplash.com/photo-1550547660-d9450f859349' },
+          { id:'b2', name:'Cheese Blast',  price:209, img:'https://5.imimg.com/data5/ANDROID/Default/2023/1/GY/KN/DD/130682649/product-jpeg-500x500.jpg' }
+        ]
+      },
+      { id:'r3', name:'Sweet Tooth',  rating:4.8, category:'sweets', img:'https://images.unsplash.com/photo-1590080875839-78abfc0831b0',
+        items:[
+          { id:'s1', name:'Chocolate Shake',price:119, img:'https://www.queensleeappetit.com/wp-content/uploads/2020/10/classic-chocolate-milkshake-recipe-queensleeappetit.com_.jpg' },
+          { id:'s2', name:'Gulab Jamun',    price:89,  img:'https://1.bp.blogspot.com/-YGBSprsgs1c/XdDVy-pGurI/AAAAAAAAX64/uN_6FF2b6BIYgI2tzz3DXlWNvdlY_jZ_QCLcBGAsYHQ/s1600/gulab%2Bjamun%2B9.JPG' }
+        ]
+      },
+      { id:'r4', name:'South Spice',  rating:4.5, category:'south',  img:'https://images.unsplash.com/photo-1626082927389-6c88f405a05a',
+        items:[
+          { id:'so1', name:'Idli Sambhar',price:99,  img:'https://i0.wp.com/gomathirecipes.com/wp-content/uploads/2022/08/3297.jpg?fit=1200%2C800&ssl=1' },
+          { id:'so2', name:'Masala Dosa', price:139, img:'https://tse1.explicit.bing.net/th/id/OIP.6Nx_C1m4YCujBiHe48YpHAHaE8?rs=1&pid=ImgDetMain' }
+        ]
+      }
+    ];
+
+    // ────────────────────────────────────────────
+    // Cart state
+    // ────────────────────────────────────────────
+    const cart = {};
+    (function loadCart(){ const c = JSON.parse(localStorage.getItem('demoCart')||'{}'); Object.assign(cart, c); updateCartUI(); })();
+    window.addEventListener('beforeunload', ()=> localStorage.setItem('demoCart', JSON.stringify(cart)));
+
+    function showToast(msg, timeout=2600){
+      const t = document.createElement('div');
+      t.className = 'px-4 py-2 rounded-lg glass text-white text-sm';
+      t.textContent = msg;
+      document.getElementById('toast').appendChild(t);
+      setTimeout(()=>{ t.style.opacity=0; setTimeout(()=>t.remove(),400); }, timeout);
+    }
+
+    // ────────────────────────────────────────────
+    // Render menu
+    // ────────────────────────────────────────────
+    const menuContainer = document.getElementById('menu');
+    function renderMenu(filterCat='all', query=''){
+      menuContainer.innerHTML='';
+      const items=[];
+      data.forEach(r=> r.items.forEach(it=> items.push({...it, restaurant:r.name, rimg:r.img, rRating:r.rating, category:r.category})));
+      const fastFoodCats=['pizza','burger'];
+      const filtered = items.filter(it=>{
+        if(filterCat==='all') return true;
+        if(filterCat==='fastfood') return fastFoodCats.includes(it.category);
+        return it.category===filterCat;
+      }).filter(it=> query===''||(it.name+it.restaurant).toLowerCase().includes(query.toLowerCase()));
+
+      filtered.forEach(it=>{
+        const card=document.createElement('div');
+        card.className='bg-gradient-to-br from-white/10 to-white/5 rounded-2xl p-3 glass hover:shadow-2xl transform transition cursor-pointer';
+        card.innerHTML=`
+          <div class="relative rounded-lg overflow-hidden">
+            <img src="${it.img}" alt="${it.name}" class="w-full h-40 object-cover" loading="lazy"/>
+            <div class="absolute left-3 top-3 bg-black/40 px-3 py-1 rounded-full text-sm text-white">${it.restaurant} • ⭐ ${it.rRating}</div>
+          </div>
+          <div class="mt-3 flex items-center justify-between">
+            <div>
+              <div class="font-semibold text-white">${it.name}</div>
+              <div class="text-sm text-[color:var(--muted)]">From ${it.restaurant}</div>
+            </div>
+            <div class="text-right">
+              <div class="font-bold text-white">₹${it.price}</div>
+              <button class="addBtn mt-2 px-3 py-1 rounded-lg bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-bold text-sm">Add</button>
+            </div>
+          </div>`;
+        VanillaTilt.init(card,{max:12,speed:300,glare:true,'max-glare':0.15});
+        card.querySelector('.addBtn').addEventListener('click',()=>{
+          addToCart(it);
+          gsap.fromTo(card,{scale:1},{scale:1.03,duration:0.12,yoyo:true,repeat:1});
+        });
+        menuContainer.appendChild(card);
+      });
+    }
+    renderMenu();
+
+    document.querySelectorAll('.category').forEach(btn=> btn.addEventListener('click',()=>{
+      document.querySelectorAll('.category').forEach(b=>b.classList.remove('ring-2','ring-white/20'));
+      btn.classList.add('ring-2','ring-white/20');
+      renderMenu(btn.dataset.cat, document.getElementById('globalSearch').value||'');
+    }));
+    document.getElementById('globalSearch').addEventListener('keydown',e=>{ if(e.key==='Enter') renderMenu('all',e.target.value); });
+    document.getElementById('explore').addEventListener('click',()=> renderMenu('all',document.getElementById('globalSearch').value||''));
+
+    // ────────────────────────────────────────────
+    // Cart functions
+    // ────────────────────────────────────────────
+    function addToCart(item){
+      if(!cart[item.id]) cart[item.id]={...item,qty:0};
+      cart[item.id].qty++;
+      updateCartUI();
+      showToast(item.name+' added ✅');
+      document.getElementById('cartBtn').classList.add('animate-pulse');
+      setTimeout(()=>document.getElementById('cartBtn').classList.remove('animate-pulse'),400);
+    }
+
+    function updateCartUI(){
+      const itemsDiv=document.getElementById('cartItems');
+      itemsDiv.innerHTML='';
+      let total=0, count=0;
+      Object.values(cart).forEach(it=>{
+        total+=it.price*it.qty; count+=it.qty;
+        const row=document.createElement('div');
+        row.className='flex items-center justify-between text-sm';
+        row.innerHTML=`<div>${it.name} ×${it.qty}</div><div>₹${it.price*it.qty}</div>`;
+        itemsDiv.appendChild(row);
+      });
+      document.getElementById('cartTotal').textContent=total;
+      document.getElementById('cartCount').textContent=count;
+      document.getElementById('checkoutTotal').textContent=total;
+      const ci=document.getElementById('checkoutItems'); ci.innerHTML='';
+      Object.values(cart).forEach(it=>{ const r=document.createElement('div'); r.className='flex items-center justify-between text-sm'; r.innerHTML=`<div>${it.name} ×${it.qty}</div><div>₹${it.price*it.qty}</div>`; ci.appendChild(r); });
+    }
+
+    document.getElementById('cartBtn').addEventListener('click',()=> document.getElementById('cartPanel').classList.toggle('hidden'));
+    document.getElementById('closeCartPanel').addEventListener('click',()=> document.getElementById('cartPanel').classList.add('hidden'));
+    document.getElementById('clearCart').addEventListener('click',()=>{ Object.keys(cart).forEach(k=>delete cart[k]); updateCartUI(); showToast('Cart cleared'); });
+    document.getElementById('goToCheckout').addEventListener('click',()=>{
+      if(Object.keys(cart).length===0){ alert('Cart is empty'); return; }
+      document.getElementById('checkoutModal').classList.remove('hidden');
+    });
+
+    // ────────────────────────────────────────────
+    // Payment form
+    // ────────────────────────────────────────────
+    function renderPaymentForm(){
+      const pm=document.getElementById('paymentMethod').value;
+      const cont=document.getElementById('paymentDetails');
+      cont.innerHTML='';
+      if(pm==='card'){
+        cont.innerHTML=`
+          <input id="cardNumber" placeholder="Card number (xxxx xxxx xxxx xxxx)" class="w-full p-3 rounded-lg bg-transparent border border-white/20 text-white placeholder:text-white/50 mb-2" maxlength="19"/>
+          <div class="flex gap-2">
+            <input id="cardExpiry" placeholder="MM/YY" class="w-1/2 p-3 rounded-lg bg-transparent border border-white/20 text-white placeholder:text-white/50" maxlength="5"/>
+            <input id="cardCVV" placeholder="CVV" class="w-1/2 p-3 rounded-lg bg-transparent border border-white/20 text-white placeholder:text-white/50" maxlength="3"/>
+          </div>`;
+      } else if(pm==='upi'){
+        cont.innerHTML=`
+          <input id="upiId" placeholder="yourid@upi" class="w-full p-3 rounded-lg bg-transparent border border-white/20 text-white placeholder:text-white/50 mb-2"/>
+          <div class="text-sm text-[color:var(--muted)]">Mock UPI flow — demo only.</div>`;
+      } else {
+        cont.innerHTML=`<div class="p-3 rounded-lg bg-white/5 text-white/80">💵 Pay with cash on delivery. Keep exact change ready.</div>`;
+      }
+    }
+    document.getElementById('paymentMethod').addEventListener('change',renderPaymentForm);
+    renderPaymentForm();
+
+    // ────────────────────────────────────────────
+    // Checkout — saves order to Firestore ✅
+    // ────────────────────────────────────────────
+    document.getElementById('payNow').addEventListener('click', async ()=>{
+      const address=document.getElementById('customerAddress').value.trim();
+      if(!address){ alert('Please enter delivery address'); return; }
+      if(Object.keys(cart).length===0){ alert('Cart is empty'); return; }
+
+      const pm=document.getElementById('paymentMethod').value;
+      if(pm==='card'){
+        const number=(document.getElementById('cardNumber')||{value:''}).value.replace(/\s+/g,'');
+        const cvv=(document.getElementById('cardCVV')||{value:''}).value.trim();
+        const expiry=(document.getElementById('cardExpiry')||{value:''}).value.trim();
+        if(!/^\d{16}$/.test(number)){ alert('Card must be 16 digits'); return; }
+        if(!/^\d{3}$/.test(cvv)){ alert('Invalid CVV'); return; }
+        if(!/^(0[1-9]|1[0-2])\/\d{2}$/.test(expiry)){ alert('Invalid expiry (MM/YY)'); return; }
+      }
+      if(pm==='upi'){
+        const upi=(document.getElementById('upiId')||{value:''}).value.trim();
+        if(!/^[\w.-]+@[\w.-]+$/.test(upi)){ alert('Invalid UPI ID'); return; }
+      }
+
+      showToast('Processing payment...');
+      await new Promise(r=>setTimeout(r,900));
+
+      // ✅ Save order to Firestore
+      const user = auth.currentUser;
+      let orderId = null;
+      if(user){
+        try{
+          const total = Object.values(cart).reduce((s,i)=>s+i.price*i.qty,0);
+          const ref = await addDoc(collection(db,'orders'),{
+            userId: user.uid,
+            userEmail: user.email,
+            items: Object.values(cart),
+            total,
+            address,
+            paymentMethod: pm,
+            note: document.getElementById('orderNote').value||'',
+            status: 'preparing',
+            createdAt: serverTimestamp()
+          });
+          orderId = ref.id;
+          localStorage.setItem('lastOrderId', orderId);
+        } catch(e){ console.error('Order save failed:',e); }
+      }
+
+      showToast('Payment successful ✅');
+      document.getElementById('checkoutModal').classList.add('hidden');
+      Object.keys(cart).forEach(k=>delete cart[k]); updateCartUI();
+      runOrderStatus();
+
+      const latlng = await geocodeAddress(address);
+      if(latlng){ document.getElementById('tracking').classList.remove('hidden'); initTrackingMap(latlng); }
+    });
+
+    document.getElementById('cancelCheckoutBtn').addEventListener('click',()=> document.getElementById('checkoutModal').classList.add('hidden'));
+
+    // ────────────────────────────────────────────
+    // Order status animation
+    // ────────────────────────────────────────────
+    function runOrderStatus(){
+      const modal=document.getElementById('statusModal'); modal.classList.remove('hidden');
+      const steps=document.querySelectorAll('.status-step');
+      steps.forEach(s=>gsap.to(s,{opacity:0,y:12,duration:0}));
+      steps.forEach((s,i)=>setTimeout(()=>gsap.to(s,{opacity:1,y:0,duration:0.6,ease:'power2.out'}),i*2000));
+      setTimeout(()=>{ modal.classList.add('hidden'); showToast('Order delivered 🎉'); document.getElementById('tracking').classList.add('hidden'); }, steps.length*2000+1000);
+    }
+
+    // ────────────────────────────────────────────
+    // Tracking map
+    // ────────────────────────────────────────────
+    function geocodeAddress(address){
+      return fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}`)
+        .then(r=>r.json()).then(res=>res&&res.length?[parseFloat(res[0].lat),parseFloat(res[0].lon)]:null).catch(()=>null);
+    }
+
+    let trackingMap, truckMarker;
+    function initTrackingMap(customerLatLng){
+      const el=document.getElementById('trackingMap');
+      if(!trackingMap) trackingMap=L.map(el).setView([28.6139,77.2090],13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(trackingMap);
+      const restaurant=[28.6139,77.2090];
+      L.marker(restaurant).addTo(trackingMap).bindPopup('Restaurant');
+      L.marker(customerLatLng).addTo(trackingMap).bindPopup('You');
+      truckMarker=L.marker(restaurant,{icon:L.divIcon({className:'',html:'🚚',iconSize:[30,30]})}).addTo(trackingMap);
+      const steps=200;
+      const latStep=(customerLatLng[0]-restaurant[0])/steps;
+      const lonStep=(customerLatLng[1]-restaurant[1])/steps;
+      let s=0; const iv=setInterval(()=>{ s++; if(s>steps){clearInterval(iv);showToast('Driver arrived!');return;} truckMarker.setLatLng([restaurant[0]+latStep*s,restaurant[1]+lonStep*s]); },120);
+    }
+
+    // ────────────────────────────────────────────
+    // UX helpers
+    // ────────────────────────────────────────────
+    document.getElementById('favoritesBtn').addEventListener('click',()=>showToast('Favorites coming soon ❤️'));
+    document.getElementById('quickOrder').addEventListener('click',()=>{
+      const first=data[0].items[0]; addToCart({...first,rimg:data[0].img,restaurant:data[0].name,rRating:data[0].rating,category:data[0].category});
+      document.getElementById('cartPanel').classList.remove('hidden');
+    });
+    document.getElementById('viewMenu').addEventListener('click',()=>{ document.getElementById('menuSection').scrollIntoView({behavior:'smooth'}); renderMenu(); });
+    document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ document.getElementById('tracking').classList.add('hidden'); document.getElementById('checkoutModal').classList.add('hidden'); document.getElementById('statusModal').classList.add('hidden'); }});
+    document.querySelectorAll('.card').forEach(c=>VanillaTilt.init(c,{max:10,speed:350}));
+    AOS.init({once:true,duration:700});
+    const swiper=new Swiper('.mySwiper',{loop:true,autoplay:{delay:3000},pagination:{el:'.swiper-pagination'}});
+    gsap.from('header',{y:-30,opacity:0,duration:0.8});
+    gsap.from('.tag',{x:-10,opacity:0,stagger:0.08,duration:0.6});
+  </script>
+</body>
+</html>

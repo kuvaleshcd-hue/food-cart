@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sign Up — Food Cart 🍔</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+  <style>
+    body { background:linear-gradient(135deg,#ff7e5f,#feb47b); font-family:'Poppins',sans-serif; }
+    .signup-card { backdrop-filter:blur(15px); background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.3); }
+    input { background:rgba(255,255,255,0.9); color:#333; }
+  </style>
+</head>
+<body class="flex items-center justify-center h-screen">
+
+  <div class="signup-card w-96 p-8 rounded-2xl shadow-2xl text-center">
+    <h1 class="text-3xl font-bold text-white mb-4">Create Account 🍟</h1>
+    <p class="text-white/80 mb-8">Join the Food Cart family today!</p>
+
+    <form id="registerForm" class="space-y-4">
+      <input type="text"     id="username" placeholder="Full Name" class="w-full p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
+      <input type="email"    id="email"    placeholder="Email"     class="w-full p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
+      <input type="password" id="password" placeholder="Password"  class="w-full p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-400" />
+      <button type="submit"
+        class="w-full bg-orange-500 hover:bg-orange-600 text-white py-3 rounded-lg transition font-semibold">
+        Sign Up
+      </button>
+    </form>
+
+    <p class="text-sm text-white/70 mt-6">
+      Already have an account? <a href="login.html" class="text-white hover:underline font-semibold">Login here</a>
+    </p>
+  </div>
+
+  <!-- ✅ ES module only — no compat SDK scripts -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getAuth, createUserWithEmailAndPassword, updateProfile }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { getFirestore, doc, setDoc, serverTimestamp }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyCZQl-RwRK7KPLpVDK8a1WzbptcX8HyBzU",
+      authDomain:        "food-cart-login.firebaseapp.com",
+      projectId:         "food-cart-login",
+      storageBucket:     "food-cart-login.firebasestorage.app",  // ✅ fixed
+      messagingSenderId: "1080008629691",
+      appId:             "1:1080008629691:web:d9ce40413e8772b250b89e"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    gsap.from('.signup-card',{duration:1,y:100,opacity:0,ease:'power3.out'});
+
+    document.getElementById('registerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const username = document.getElementById('username').value.trim();
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      if(!username||!email||!password){ alert("Please fill in all fields!"); return; }
+
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await updateProfile(cred.user, { displayName: username });
+
+        // ✅ Also create user profile doc in Firestore
+        await setDoc(doc(db,'users',cred.user.uid), {
+          name:      username,
+          email:     email,
+          createdAt: serverTimestamp()
+        });
+
+        alert("Registration successful! 🎉");
+        window.location.href = "login.html";
+      } catch(err){
+        alert(err.message);
+      }
+    });
+  </script>
+</body>
+</html>

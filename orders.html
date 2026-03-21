@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>My Orders — Food Cart</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background:linear-gradient(to bottom right,#828282,#898787); min-height:100vh; font-family:'Inter',sans-serif; }
+    .glass { background:rgba(255,255,255,0.15); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.25); }
+    .neon-text { background:linear-gradient(90deg,#ff6ec7,#ffd1d1,#ff6ec7); -webkit-background-clip:text; color:transparent; font-weight:700; }
+    .skeleton { background:linear-gradient(90deg,rgba(255,255,255,0.1) 25%,rgba(255,255,255,0.2) 50%,rgba(255,255,255,0.1) 75%); background-size:200% 100%; animation:shimmer 1.5s infinite; border-radius:12px; }
+    @keyframes shimmer { 0%{background-position:200% 0;} 100%{background-position:-200% 0;} }
+  </style>
+</head>
+<body class="text-white">
+
+  <nav class="glass p-4 flex justify-between items-center sticky top-0 z-10">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-pink-500 to-yellow-400 flex items-center justify-center font-extrabold text-white">F</div>
+      <h1 class="text-xl font-bold neon-text">My Orders</h1>
+    </div>
+    <div class="flex gap-3">
+      <a href="index.html"   class="px-3 py-2 rounded-lg hover:bg-white/10 text-sm">🏠 Home</a>
+      <a href="hotels.html"  class="px-3 py-2 rounded-lg hover:bg-white/10 text-sm">🏨 Hotels</a>
+      <a href="profile.html" class="px-3 py-2 rounded-lg hover:bg-white/10 text-sm">👤 Profile</a>
+    </div>
+  </nav>
+
+  <main class="max-w-3xl mx-auto px-4 py-10">
+    <div id="ordersContainer" class="space-y-4">
+      <!-- Skeleton loaders -->
+      <div class="skeleton h-28 w-full"></div>
+      <div class="skeleton h-28 w-full"></div>
+      <div class="skeleton h-28 w-full"></div>
+    </div>
+  </main>
+
+  <footer class="text-center py-6 text-gray-400 text-sm">© Food Cart — Taste the Future 🍴</footer>
+
+  <script type="module">
+    import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { getFirestore, collection, query, where, orderBy, getDocs }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyCZQl-RwRK7KPLpVDK8a1WzbptcX8HyBzU",
+      authDomain:        "food-cart-login.firebaseapp.com",
+      projectId:         "food-cart-login",
+      storageBucket:     "food-cart-login.firebasestorage.app",
+      messagingSenderId: "1080008629691",
+      appId:             "1:1080008629691:web:d9ce40413e8772b250b89e"
+    };
+
+    const app  = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    const statusColors = {
+      preparing:          'bg-yellow-500',
+      'out for delivery': 'bg-blue-500',
+      delivered:          'bg-green-500'
+    };
+
+    onAuthStateChanged(auth, async (user) => {
+      if(!user){ window.location.replace("login.html"); return; }
+
+      const container = document.getElementById('ordersContainer');
+      try{
+        const q    = query(collection(db,'orders'), where("userId","==",user.uid), orderBy("createdAt","desc"));
+        const snap = await getDocs(q);
+
+        if(snap.empty){
+          container.innerHTML=`
+            <div class="text-center py-20">
+              <p class="text-4xl mb-4">🛒</p>
+              <p class="text-gray-300 text-lg">No orders yet.</p>
+              <a href="hotels.html" class="mt-4 inline-block bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-bold px-6 py-2 rounded-full">Order Now</a>
+            </div>`;
+          return;
+        }
+
+        container.innerHTML='';
+        snap.forEach(docSnap=>{
+          const o    = docSnap.data();
+          const date = o.createdAt?.toDate().toLocaleDateString('en-IN',{
+            day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
+          }) || 'Just now';
+          const statusClass = statusColors[o.status] || 'bg-gray-500';
+          const itemsList   = (o.items||[]).map(i=>`${i.name} ×${i.qty}`).join(', ');
+
+          const card = document.createElement('div');
+          card.className='glass rounded-2xl p-5';
+          card.innerHTML=`
+            <div class="flex justify-between items-start mb-3">
+              <div class="flex-1 mr-3">
+                <p class="text-xs text-gray-400 mb-1">${date}</p>
+                <p class="text-sm text-gray-200 leading-relaxed">${itemsList}</p>
+              </div>
+              <span class="text-xs font-semibold px-3 py-1 rounded-full ${statusClass} text-white capitalize whitespace-nowrap">
+                ${o.status||'placed'}
+              </span>
+            </div>
+            <div class="flex justify-between items-center border-t border-white/10 pt-3">
+              <span class="text-sm text-gray-300 truncate max-w-xs">📍 ${o.address||'—'}</span>
+              <span class="font-bold text-yellow-300 ml-3">₹${o.total||0}</span>
+            </div>`;
+          container.appendChild(card);
+        });
+
+      } catch(err){
+        console.error(err);
+        container.innerHTML=`<p class="text-red-400 text-center">Failed to load orders. Make sure Firestore index is created.</p>`;
+      }
+    });
+  </script>
+</body>
+</html>

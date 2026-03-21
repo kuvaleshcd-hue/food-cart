@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Admin Upload — Food Cart</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen font-[Inter]">
+
+  <!-- Auth check overlay -->
+  <div id="authBlock" class="hidden fixed inset-0 bg-red-100 flex items-center justify-center z-50">
+    <div class="bg-white p-8 rounded-2xl shadow-lg text-center max-w-sm">
+      <p class="text-2xl mb-3">🚫</p>
+      <h2 class="text-xl font-bold text-red-600 mb-2">Access Denied</h2>
+      <p class="text-gray-600 mb-4">This page is for admins only.</p>
+      <a href="index.html" class="bg-orange-500 text-white px-6 py-2 rounded-lg hover:bg-orange-600">Go Home</a>
+    </div>
+  </div>
+
+  <div id="uploadUI" class="hidden bg-white shadow-lg rounded-2xl p-8 w-[90%] max-w-md">
+    <h1 class="text-2xl font-bold text-center mb-2 text-gray-800">🍴 Admin Image Upload</h1>
+    <p id="adminEmail" class="text-center text-sm text-gray-500 mb-6"></p>
+
+    <div class="mb-4">
+      <label class="block text-gray-700 mb-2">Select Image</label>
+      <input id="fileInput" type="file" accept="image/*"
+        class="w-full border border-gray-300 rounded-lg p-2 focus:outline-none focus:ring-2 focus:ring-indigo-400" />
+    </div>
+
+    <button id="uploadBtn"
+      class="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg hover:bg-indigo-700 transition">
+      Upload Image
+    </button>
+
+    <div id="resultBox" class="hidden mt-6 text-center">
+      <p class="font-semibold text-gray-700 mb-2">✅ Image Uploaded!</p>
+      <img id="previewImg" class="w-48 h-32 object-cover rounded-lg mx-auto mb-2" />
+      <p class="text-sm text-gray-600 break-all">
+        URL: <a id="imageUrl" href="#" target="_blank" class="text-indigo-600 underline"></a>
+      </p>
+    </div>
+
+    <div class="mt-6 border-t pt-4">
+      <a href="index.html" class="text-sm text-gray-500 hover:text-gray-700">← Back to Home</a>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL }
+      from "https://www.gstatic.com/firebasejs/10.13.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey:            "AIzaSyCZQl-RwRK7KPLpVDK8a1WzbptcX8HyBzU",
+      authDomain:        "food-cart-login.firebaseapp.com",
+      projectId:         "food-cart-login",
+      storageBucket:     "food-cart-login.firebasestorage.app",  // ✅ fixed
+      messagingSenderId: "1080008629691",
+      appId:             "1:1080008629691:web:d9ce40413e8772b250b89e"
+    };
+
+    const app     = initializeApp(firebaseConfig);
+    const auth    = getAuth(app);
+    const storage = getStorage(app);
+
+    // ✅ Replace with your admin email
+    const ADMIN_EMAIL = 'your-admin@email.com';
+
+    onAuthStateChanged(auth, (user) => {
+      if(!user || user.email !== ADMIN_EMAIL){
+        document.getElementById('authBlock').classList.remove('hidden');
+        return;
+      }
+      // Allowed — show UI
+      document.getElementById('uploadUI').classList.remove('hidden');
+      document.getElementById('adminEmail').textContent = 'Logged in as: ' + user.email;
+    });
+
+    document.getElementById('uploadBtn').addEventListener('click', async () => {
+      const file = document.getElementById('fileInput').files[0];
+      if(!file){ alert('Please select a file first!'); return; }
+
+      const fileName   = `uploads/${Date.now()}_${file.name}`;
+      const storageRef = ref(storage, fileName);
+      const btn        = document.getElementById('uploadBtn');
+
+      btn.disabled=true; btn.textContent='Uploading...';
+      try{
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        document.getElementById('previewImg').src = url;
+        document.getElementById('imageUrl').href  = url;
+        document.getElementById('imageUrl').textContent = url;
+        document.getElementById('resultBox').classList.remove('hidden');
+      } catch(err){
+        alert("Upload failed: " + err.message);
+      }
+      btn.textContent='Upload Image'; btn.disabled=false;
+    });
+  </script>
+</body>
+</html>

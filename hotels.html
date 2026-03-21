@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Restaurants — FoodCart</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:'DM Sans',sans-serif;background:linear-gradient(135deg,#1a0a1e 0%,#2d1040 40%,#1a1a2e 100%);min-height:100vh;color:#fff;}
+    ::-webkit-scrollbar{width:4px;height:4px;} ::-webkit-scrollbar-thumb{background:#ff6ec7;border-radius:99px;}
+    nav{position:sticky;top:0;z-index:100;backdrop-filter:blur(20px);background:rgba(26,10,30,0.9);border-bottom:1px solid rgba(255,255,255,0.1);padding:0 24px;height:64px;display:flex;align-items:center;justify-content:space-between;gap:16px;}
+    .logo{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;background:linear-gradient(90deg,#ff6ec7,#facc15);-webkit-background-clip:text;background-clip:text;color:transparent;text-decoration:none;cursor:pointer;}
+    .nav-search{flex:1;max-width:420px;display:flex;align-items:center;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:12px;padding:0 14px;height:40px;gap:8px;}
+    .nav-search input{flex:1;background:none;border:none;outline:none;color:#fff;font-size:14px;font-family:'DM Sans',sans-serif;}
+    .nav-search input::placeholder{color:rgba(255,255,255,0.35);}
+    .cart-btn{display:flex;align-items:center;gap:6px;background:linear-gradient(90deg,#f472b6,#facc15);color:#000;border:none;border-radius:99px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer;}
+    .filter-bar{padding:14px 24px;display:flex;gap:10px;overflow-x:auto;background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.07);-ms-overflow-style:none;scrollbar-width:none;}
+    .filter-bar::-webkit-scrollbar{display:none;}
+    .filter-chip{flex-shrink:0;padding:8px 18px;border-radius:99px;font-size:13px;font-weight:500;border:1.5px solid rgba(255,255,255,0.15);color:rgba(255,255,255,0.65);cursor:pointer;transition:.2s;white-space:nowrap;background:rgba(255,255,255,0.04);}
+    .filter-chip:hover{border-color:rgba(255,110,199,0.5);color:#ff6ec7;}
+    .filter-chip.on{background:rgba(255,110,199,0.15);border-color:#ff6ec7;color:#ff6ec7;}
+    .results-header{padding:20px 24px 10px;display:flex;justify-content:space-between;align-items:center;}
+    .results-count{font-size:14px;color:rgba(255,255,255,0.5);}
+    .sort-select{background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);border-radius:10px;color:#fff;padding:6px 12px;font-size:13px;outline:none;font-family:'DM Sans',sans-serif;cursor:pointer;}
+    .rest-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;padding:0 24px 40px;}
+    .rest-card{border-radius:20px;overflow:hidden;cursor:pointer;transition:.25s;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);}
+    .rest-card:hover{transform:translateY(-4px);box-shadow:0 16px 40px rgba(255,110,199,0.18);}
+    .rest-img{height:175px;position:relative;overflow:hidden;background:rgba(255,255,255,0.05);display:flex;align-items:center;justify-content:center;font-size:60px;}
+    .rest-img img{width:100%;height:100%;object-fit:cover;transition:.3s;}
+    .rest-card:hover .rest-img img{transform:scale(1.06);}
+    .rest-discount{position:absolute;bottom:0;left:0;right:0;padding:30px 12px 10px;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);font-size:12px;font-weight:700;color:#facc15;}
+    .rest-tag{position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.6);backdrop-filter:blur(6px);border-radius:99px;padding:4px 10px;font-size:11px;font-weight:600;}
+    .rating-pill{display:inline-flex;align-items:center;gap:3px;background:#166534;color:#fff;border-radius:6px;padding:3px 8px;font-size:12px;font-weight:700;}
+    .rest-body{padding:14px 16px 16px;}
+    .rest-name{font-family:'Syne',sans-serif;font-size:16px;font-weight:700;margin-bottom:5px;}
+    .rest-cuisine{font-size:12px;color:rgba(255,255,255,0.45);margin-bottom:8px;}
+    .rest-info-row{display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,0.5);flex-wrap:wrap;}
+    .skeleton{background:rgba(255,255,255,0.07);border-radius:20px;height:280px;animation:shimmer 1.5s infinite;}
+    @keyframes shimmer{0%,100%{opacity:.5}50%{opacity:1}}
+    .empty{text-align:center;padding:60px 24px;color:rgba(255,255,255,0.4);}
+    .empty-icon{font-size:48px;margin-bottom:16px;}
+  </style>
+</head>
+<body>
+<nav>
+  <div class="logo" onclick="window.location.href='index.html'">🍴 FoodCart</div>
+  <div class="nav-search">
+    <span>🔍</span>
+    <input type="text" id="searchInput" placeholder="Search restaurants..." oninput="filterRestaurants()"/>
+  </div>
+  <button class="cart-btn" onclick="window.location.href='cart.html'">🛒 Cart</button>
+</nav>
+
+<div class="filter-bar">
+  <div class="filter-chip on" onclick="setFilter(this,'all')">All</div>
+  <div class="filter-chip" onclick="setFilter(this,'veg')">Pure Veg</div>
+  <div class="filter-chip" onclick="setFilter(this,'South Indian')">South Indian</div>
+  <div class="filter-chip" onclick="setFilter(this,'North Indian')">North Indian</div>
+  <div class="filter-chip" onclick="setFilter(this,'Fast Food')">Fast Food</div>
+  <div class="filter-chip" onclick="setFilter(this,'Italian')">Italian</div>
+</div>
+
+<div class="results-header">
+  <div class="results-count" id="resultsCount">Loading...</div>
+  <select class="sort-select" onchange="sortRestaurants(this.value)">
+    <option value="rating">Top Rated</option>
+    <option value="delivery_time">Fastest</option>
+    <option value="delivery_fee">Lowest Fee</option>
+  </select>
+</div>
+
+<div class="rest-grid" id="restGrid">
+  <div class="skeleton"></div>
+  <div class="skeleton"></div>
+  <div class="skeleton"></div>
+</div>
+
+<script src="api.js"></script>
+<script>
+  if (!getToken()) window.location.href = 'login.html'
+
+  let allRestaurants = []
+  let activeFilter = 'all'
+  let activeSort = 'rating'
+  let searchQuery = ''
+
+  const CUISINE_EMOJI = {
+    'South Indian': '🍛', 'Karnataka': '🍱', 'North Indian': '🍖',
+    'Mughlai': '🥘', 'Italian': '🍕', 'Fast Food': '🍔', 'American': '🌮'
+  }
+
+  async function loadRestaurants() {
+    try {
+      allRestaurants = await API.getRestaurants({ sort: activeSort })
+      renderRestaurants()
+    } catch (err) {
+      document.getElementById('restGrid').innerHTML =
+        '<div class="empty"><div class="empty-icon">😕</div><p>Failed to load restaurants</p></div>'
+    }
+  }
+
+  function getEmoji(cuisines) {
+    for (const c of (cuisines || [])) {
+      if (CUISINE_EMOJI[c]) return CUISINE_EMOJI[c]
+    }
+    return '🍽️'
+  }
+
+  function renderRestaurants() {
+    let list = [...allRestaurants]
+
+    if (searchQuery) {
+      list = list.filter(r =>
+        r.name.toLowerCase().includes(searchQuery) ||
+        (r.cuisine || []).some(c => c.toLowerCase().includes(searchQuery))
+      )
+    }
+
+    if (activeFilter === 'veg') list = list.filter(r => r.is_veg)
+    else if (activeFilter !== 'all') list = list.filter(r => (r.cuisine || []).includes(activeFilter))
+
+    document.getElementById('resultsCount').textContent =
+      list.length + ' restaurant' + (list.length !== 1 ? 's' : '') + ' nearby'
+
+    if (!list.length) {
+      document.getElementById('restGrid').innerHTML =
+        '<div class="empty"><div class="empty-icon">🔍</div><p>No restaurants found</p></div>'
+      return
+    }
+
+    document.getElementById('restGrid').innerHTML = list.map(r => `
+      <div class="rest-card" onclick="window.location.href='menu.html?id=${r.id}'">
+        <div class="rest-img">
+          ${r.image_url
+            ? `<img src="${r.image_url}" alt="${r.name}"/>`
+            : `<span style="opacity:.4">${getEmoji(r.cuisine)}</span>`}
+          ${r.discount_text ? `<div class="rest-discount">🏷 ${r.discount_text}</div>` : ''}
+          ${r.is_veg ? `<div class="rest-tag" style="color:#4ade80">🌿 Pure Veg</div>` : ''}
+        </div>
+        <div class="rest-body">
+          <div class="rest-name">${r.name}</div>
+          <div class="rest-cuisine">${(r.cuisine || []).join(', ')}</div>
+          <div class="rest-info-row">
+            <span class="rating-pill">⭐ ${r.rating}</span>
+            <span>•</span>
+            <span>${r.delivery_time_min} mins</span>
+            <span>•</span>
+            <span>${r.delivery_fee === 0 ? '🆓 Free delivery' : '₹' + r.delivery_fee + ' delivery'}</span>
+            <span>•</span>
+            <span style="color:${r.is_open ? '#4ade80' : '#f87171'}">${r.is_open ? '● Open' : '● Closed'}</span>
+          </div>
+        </div>
+      </div>
+    `).join('')
+  }
+
+  function setFilter(el, filter) {
+    document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('on'))
+    el.classList.add('on')
+    activeFilter = filter
+    renderRestaurants()
+  }
+
+  function sortRestaurants(val) {
+    activeSort = val
+    if (val === 'rating') allRestaurants.sort((a,b) => b.rating - a.rating)
+    else if (val === 'delivery_time') allRestaurants.sort((a,b) => a.delivery_time_min - b.delivery_time_min)
+    else if (val === 'delivery_fee') allRestaurants.sort((a,b) => a.delivery_fee - b.delivery_fee)
+    renderRestaurants()
+  }
+
+  function filterRestaurants() {
+    searchQuery = document.getElementById('searchInput').value.toLowerCase().trim()
+    renderRestaurants()
+  }
+
+  loadRestaurants()
+</script>
+</body>
+</html>
