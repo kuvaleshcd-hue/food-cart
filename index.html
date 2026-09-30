@@ -29,19 +29,33 @@
   <style>
     :root { --muted: #94a3b8; }
     html, body { height: 100%; font-family: 'Inter', system-ui, sans-serif; }
-    body { background: #8a8888; color: #333; }
+    body { 
+      background: #fdfbf7;
+      color: #334155; 
+    }
+    /* override tailwind dark classes for light theme */
+    .text-white { color: #1e293b !important; }
+    .text-white\/90 { color: #334155 !important; }
+    .text-white\/80 { color: #475569 !important; }
+    .text-white\/50 { color: #94a3b8 !important; }
+    .text-\\[\\#ff99ff\\] { color: #ec4899 !important; }
+    .border-white\/20, .border-white\/10 { border-color: rgba(0,0,0,0.1) !important; }
+    .bg-white\/10, .bg-white\/5 { background-color: rgba(0,0,0,0.05) !important; }
+    .hover\:bg-white\/20:hover { background-color: rgba(0,0,0,0.1) !important; }
+    .hover\:bg-white\/10:hover, .hover\:bg-white\/5:hover { background-color: rgba(0,0,0,0.05) !important; }
+    
     .glass {
-      background: rgba(255,255,255,0.2);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgb(255,247,247);
-      color: #efeeee;
+      background: rgba(255,255,255,0.7) !important;
+      backdrop-filter: blur(12px) !important;
+      border: 1px solid rgba(0,0,0,0.1) !important;
+      color: #1e293b !important;
     }
     .neon-text {
-      background: linear-gradient(90deg,#ff6ec7 0%,#ffd1d1 40%,#ff6ec7 100%);
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      font-weight: 700;
+      background: linear-gradient(90deg,#ec4899 0%,#f59e0b 100%) !important;
+      -webkit-background-clip: text !important;
+      background-clip: text !important;
+      color: transparent !important;
+      font-weight: 800 !important;
     }
     .tag { background: linear-gradient(90deg,#4ade80,#06b6d4); padding:4px 8px; border-radius:999px; font-weight:600; color:#04263b; }
     .status-step { opacity:0; transform:translateY(12px); }
