@@ -136,6 +136,30 @@
     </div>
   </section>
 
+  <!-- ADVANCED FILTERS -->
+  <section class="max-w-7xl mx-auto px-4 pb-6">
+    <div class="flex flex-wrap items-center justify-between bg-white/70 backdrop-blur-md border border-slate-200 rounded-2xl p-4 gap-4 shadow-sm">
+      <div class="flex flex-wrap items-center gap-6">
+        <label class="text-sm font-semibold text-slate-700 flex items-center gap-2 cursor-pointer hover:bg-slate-50 p-2 rounded-lg transition">
+          <input type="checkbox" id="vegOnlyFilter" class="w-4 h-4 rounded text-green-500 focus:ring-green-500">
+          <span class="text-green-600">Veg Only 🥬</span>
+        </label>
+        <div class="hidden md:block h-6 w-px bg-slate-300"></div>
+        <div class="flex items-center gap-3">
+          <label class="text-sm font-semibold text-slate-700 w-24">Max: ₹<span id="priceVal">500</span></label>
+          <input type="range" id="priceFilter" min="50" max="500" step="10" value="500" class="w-32 md:w-40 accent-pink-500">
+        </div>
+      </div>
+      <div>
+        <select id="sortFilter" class="px-3 py-2 rounded-xl text-sm bg-white border border-slate-200 text-slate-700 font-semibold focus:ring-2 focus:ring-pink-500 outline-none shadow-sm cursor-pointer">
+          <option value="default">Sort: Recommended</option>
+          <option value="priceLow">Price: Low to High</option>
+          <option value="priceHigh">Price: High to Low</option>
+        </select>
+      </div>
+    </div>
+  </section>
+
   <!-- MENU GRID -->
   <section id="menuSection">
     <div id="menu" class="max-w-7xl mx-auto px-4 pb-16 grid md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
@@ -304,16 +328,41 @@
     // Render menu
     // ────────────────────────────────────────────
     const menuContainer = document.getElementById('menu');
-    function renderMenu(filterCat='all', query=''){
+    let currentCategory = 'all';
+
+    function renderMenu(){
+      const query = document.getElementById('globalSearch').value.toLowerCase();
+      const isVegOnly = document.getElementById('vegOnlyFilter').checked;
+      const maxPrice = parseInt(document.getElementById('priceFilter').value);
+      const sortBy = document.getElementById('sortFilter').value;
+
       menuContainer.innerHTML='';
       const items=[];
       data.forEach(r=> r.items.forEach(it=> items.push({...it, restaurant:r.name, rimg:r.img, rRating:r.rating, category:r.category})));
       const fastFoodCats=['pizza','burger'];
-      const filtered = items.filter(it=>{
-        if(filterCat==='all') return true;
-        if(filterCat==='fastfood') return fastFoodCats.includes(it.category);
-        return it.category===filterCat;
-      }).filter(it=> query===''||(it.name+it.restaurant).toLowerCase().includes(query.toLowerCase()));
+      
+      let filtered = items.filter(it=>{
+        if(currentCategory==='all') return true;
+        if(currentCategory==='fastfood') return fastFoodCats.includes(it.category);
+        return it.category===currentCategory;
+      }).filter(it=> query===''||(it.name+it.restaurant).toLowerCase().includes(query))
+        .filter(it=> it.price <= maxPrice)
+        .filter(it=> {
+          if (!isVegOnly) return true;
+          const name = it.name.toLowerCase();
+          return !name.includes('pepperoni') && !name.includes('chicken') && !name.includes('meat');
+        });
+
+      if(sortBy === 'priceLow') {
+        filtered.sort((a,b) => a.price - b.price);
+      } else if (sortBy === 'priceHigh') {
+        filtered.sort((a,b) => b.price - a.price);
+      }
+
+      if (filtered.length === 0) {
+        menuContainer.innerHTML = '<div class="col-span-full text-center py-10 text-slate-500 font-semibold">No items found matching your filters.</div>';
+        return;
+      }
 
       filtered.forEach(it=>{
         const card=document.createElement('div');
@@ -344,12 +393,21 @@
     renderMenu();
 
     document.querySelectorAll('.category').forEach(btn=> btn.addEventListener('click',()=>{
-      document.querySelectorAll('.category').forEach(b=>b.classList.remove('ring-2','ring-white/20'));
-      btn.classList.add('ring-2','ring-white/20');
-      renderMenu(btn.dataset.cat, document.getElementById('globalSearch').value||'');
+      document.querySelectorAll('.category').forEach(b=>b.classList.remove('ring-2','ring-pink-400'));
+      btn.classList.add('ring-2','ring-pink-400');
+      currentCategory = btn.dataset.cat;
+      renderMenu();
     }));
-    document.getElementById('globalSearch').addEventListener('keydown',e=>{ if(e.key==='Enter') renderMenu('all',e.target.value); });
-    document.getElementById('explore').addEventListener('click',()=> renderMenu('all',document.getElementById('globalSearch').value||''));
+    
+    document.getElementById('globalSearch').addEventListener('input', () => renderMenu());
+    document.getElementById('explore').addEventListener('click', () => renderMenu());
+    
+    document.getElementById('vegOnlyFilter').addEventListener('change', () => renderMenu());
+    document.getElementById('sortFilter').addEventListener('change', () => renderMenu());
+    document.getElementById('priceFilter').addEventListener('input', (e) => {
+      document.getElementById('priceVal').textContent = e.target.value;
+      renderMenu();
+    });
 
     // ────────────────────────────────────────────
     // Cart functions
