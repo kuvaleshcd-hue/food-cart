@@ -50,7 +50,10 @@
     <span>🔍</span>
     <input type="text" id="searchInput" placeholder="Search restaurants..." oninput="filterRestaurants()"/>
   </div>
-  <button class="cart-btn" onclick="window.location.href='cart.html'">🛒 Cart</button>
+  <div style="display:flex;gap:10px;">
+    <button class="cart-btn" onclick="window.location.href='orders.html'" style="background:linear-gradient(90deg,#60a5fa,#3b82f6);color:#fff;">📦 Orders</button>
+    <button class="cart-btn" onclick="window.location.href='cart.html'">🛒 Cart</button>
+  </div>
 </nav>
 
 <div class="filter-bar">

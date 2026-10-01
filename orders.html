@@ -104,8 +104,27 @@
             </div>
             <div class="flex justify-between items-center border-t border-white/10 pt-3">
               <span class="text-sm text-gray-300 truncate max-w-xs">📍 ${o.address||'—'}</span>
-              <span class="font-bold text-yellow-300 ml-3">₹${o.total||0}</span>
+              <div class="flex items-center gap-3">
+                <span class="font-bold text-yellow-300">₹${o.total||0}</span>
+                <button class="reorderBtn bg-gradient-to-r from-pink-500 to-yellow-400 text-black text-xs font-bold px-3 py-1.5 rounded-full hover:scale-105 transition shadow-lg">Reorder</button>
+              </div>
             </div>`;
+          
+          const reorderBtn = card.querySelector('.reorderBtn');
+          if (reorderBtn) {
+            reorderBtn.addEventListener('click', () => {
+              const currentCart = JSON.parse(localStorage.getItem('demoCart') || '{}');
+              (o.items || []).forEach(item => {
+                if(currentCart[item.id]) {
+                  currentCart[item.id].qty += (item.qty || 1);
+                } else {
+                  currentCart[item.id] = { ...item, qty: item.qty || 1 };
+                }
+              });
+              localStorage.setItem('demoCart', JSON.stringify(currentCart));
+              window.location.href = 'index.html';
+            });
+          }
           container.appendChild(card);
         });
 
