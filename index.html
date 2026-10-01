@@ -82,7 +82,7 @@
           <input id="globalSearch" class="px-4 py-2 rounded-full bg-transparent border border-white/20 placeholder:text-white/50 text-white w-72" placeholder="Search dishes, restaurants...">
           <button id="explore" class="px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-semibold hover:scale-105 transition">Explore</button>
         </div>
-        <button id="favoritesBtn" class="p-2 rounded-lg hover:bg-white/10 text-white desktop-only">❤</button>
+        <button id="favoritesBtn" class="p-2 rounded-lg hover:bg-white/10 text-white desktop-only" onclick="window.location.href='favorites.html'">❤</button>
         <!-- ✅ Profile button now links to profile.html -->
         <button id="profileBtn" class="p-2 rounded-lg hover:bg-white/10 text-white desktop-only" onclick="window.location.href='profile.html'">👤</button>
         <button id="cartBtn" class="flex items-center gap-2 px-3 py-2 rounded-lg bg-gradient-to-r from-violet-500 to-indigo-500 shadow-lg text-white">
@@ -372,6 +372,9 @@
           <div class="relative rounded-lg overflow-hidden">
             <img src="${it.img}" alt="${it.name}" class="w-full h-40 object-cover" loading="lazy"/>
             <div class="absolute left-3 top-3 bg-black/40 px-3 py-1 rounded-full text-sm text-white">${it.restaurant} • ⭐ ${it.rRating}</div>
+            <button class="favBtn absolute right-3 top-3 bg-black/40 p-2 rounded-full text-sm hover:scale-110 transition z-10" data-id="${it.id}">
+              ${window.demoFavorites && window.demoFavorites[it.id] ? '❤️' : '🤍'}
+            </button>
           </div>
           <div class="mt-3 flex items-center justify-between">
             <div>
@@ -384,9 +387,23 @@
             </div>
           </div>`;
         VanillaTilt.init(card,{max:12,speed:300,glare:true,'max-glare':0.15});
-        card.querySelector('.addBtn').addEventListener('click',()=>{
+        card.querySelector('.addBtn').addEventListener('click',(e)=>{
+          e.stopPropagation();
           addToCart(it);
           gsap.fromTo(card,{scale:1},{scale:1.03,duration:0.12,yoyo:true,repeat:1});
+        });
+        card.querySelector('.favBtn').addEventListener('click',(e)=>{
+          e.stopPropagation();
+          if(!window.demoFavorites) window.demoFavorites = JSON.parse(localStorage.getItem('demoFavorites')||'{}');
+          if(window.demoFavorites[it.id]) {
+            delete window.demoFavorites[it.id];
+            showToast(it.name + ' removed from favorites 🤍');
+          } else {
+            window.demoFavorites[it.id] = it;
+            showToast(it.name + ' added to favorites ❤️');
+          }
+          localStorage.setItem('demoFavorites', JSON.stringify(window.demoFavorites));
+          renderMenu();
         });
         menuContainer.appendChild(card);
       });
@@ -568,7 +585,9 @@
     // ────────────────────────────────────────────
     // UX helpers
     // ────────────────────────────────────────────
-    document.getElementById('favoritesBtn').addEventListener('click',()=>showToast('Favorites coming soon ❤️'));
+    // Setup global favorites obj
+    window.demoFavorites = JSON.parse(localStorage.getItem('demoFavorites')||'{}');
+    // document.getElementById('favoritesBtn').addEventListener('click',()=>showToast('Favorites coming soon ❤️'));
     document.getElementById('quickOrder').addEventListener('click',()=>{
       const first=data[0].items[0]; addToCart({...first,rimg:data[0].img,restaurant:data[0].name,rRating:data[0].rating,category:data[0].category});
       document.getElementById('cartPanel').classList.remove('hidden');
