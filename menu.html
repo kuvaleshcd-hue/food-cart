@@ -20,7 +20,7 @@
   <script type="module">
     import { initializeApp }   from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
-    import { getFirestore, collection, getDocs, doc, getDoc }
+    import { getFirestore, collection, getDocs, doc, getDoc, addDoc, serverTimestamp }
       from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -115,7 +115,116 @@
       document.getElementById('cartCount').textContent=count;
     }
 
-    window.addEventListener('DOMContentLoaded',()=>{ loadMenu(); updateCartButton(); });
+    let currentRating = 0;
+    
+    async function loadReviews() {
+      const reviewsList = document.getElementById('reviewsList');
+      if(!hotelId || !reviewsList) return;
+      try {
+        const snap = await getDocs(collection(db, "hotels", hotelId, "reviews"));
+        if(snap.empty) {
+          reviewsList.innerHTML = "<p class='text-gray-400'>No reviews yet. Be the first to review!</p>";
+          return;
+        }
+        reviewsList.innerHTML = '';
+        
+        let reviews = [];
+        snap.forEach(doc => { reviews.push(doc.data()); });
+        // Sort in memory by createdAt descending
+        reviews.sort((a, b) => {
+          const tA = a.createdAt ? a.createdAt.toMillis() : 0;
+          const tB = b.createdAt ? b.createdAt.toMillis() : 0;
+          return tB - tA;
+        });
+
+        reviews.forEach(r => {
+          const stars = '⭐'.repeat(r.rating) + '☆'.repeat(5-r.rating);
+          const dateStr = r.createdAt ? new Date(r.createdAt.toMillis()).toLocaleDateString() : 'Just now';
+          
+          const revCard = document.createElement('div');
+          revCard.className = 'bg-black/20 border border-white/5 p-4 rounded-xl';
+          revCard.innerHTML = `
+            <div class="flex justify-between mb-1 items-center">
+              <span class="font-bold text-pink-400 flex items-center gap-2">
+                <div class="w-6 h-6 rounded-full bg-pink-500 text-white flex items-center justify-center text-xs">${(r.userName || 'A').charAt(0).toUpperCase()}</div>
+                ${r.userName || 'Anonymous'}
+              </span>
+              <span class="text-xs text-gray-400">${dateStr}</span>
+            </div>
+            <div class="text-yellow-400 mb-2 tracking-widest text-xs">${stars}</div>
+            <p class="text-gray-200 text-sm leading-relaxed">${r.text}</p>
+          `;
+          reviewsList.appendChild(revCard);
+        });
+      } catch (err) {
+        console.error("Error loading reviews:", err);
+        reviewsList.innerHTML = "<p class='text-red-400'>Error loading reviews.</p>";
+      }
+    }
+
+    function setupReviewForm() {
+      const stars = document.querySelectorAll('.star-btn');
+      stars.forEach(star => {
+        star.addEventListener('click', (e) => {
+          currentRating = parseInt(e.target.getAttribute('data-value'));
+          stars.forEach(s => {
+            if(parseInt(s.getAttribute('data-value')) <= currentRating) {
+              s.classList.remove('text-gray-500');
+              s.classList.add('text-yellow-400');
+            } else {
+              s.classList.add('text-gray-500');
+              s.classList.remove('text-yellow-400');
+            }
+          });
+        });
+      });
+
+      const submitBtn = document.getElementById('submitReviewBtn');
+      if(submitBtn) {
+        submitBtn.addEventListener('click', async () => {
+          if(currentRating === 0) {
+            alert('Please select a star rating.');
+            return;
+          }
+          const text = document.getElementById('reviewText').value.trim();
+          if(!text) {
+            alert('Please write a review text.');
+            return;
+          }
+          const user = auth.currentUser;
+          if(!user) {
+            alert('You must be logged in to leave a review.');
+            return;
+          }
+          submitBtn.textContent = 'Submitting...';
+          submitBtn.disabled = true;
+
+          try {
+            await addDoc(collection(db, "hotels", hotelId, "reviews"), {
+              userId: user.uid,
+              userName: user.email ? user.email.split('@')[0] : 'User',
+              rating: currentRating,
+              text: text,
+              createdAt: serverTimestamp()
+            });
+            document.getElementById('reviewText').value = '';
+            currentRating = 0;
+            stars.forEach(s => { s.classList.add('text-gray-500'); s.classList.remove('text-yellow-400'); });
+            
+            submitBtn.textContent = 'Submit Review';
+            submitBtn.disabled = false;
+            loadReviews(); // refresh
+          } catch (err) {
+            console.error("Error adding review:", err);
+            alert('Error adding review.');
+            submitBtn.textContent = 'Submit Review';
+            submitBtn.disabled = false;
+          }
+        });
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded',()=>{ loadMenu(); updateCartButton(); loadReviews(); setupReviewForm(); });
   </script>
 </head>
 
@@ -138,6 +247,30 @@
     <p class="text-center text-gray-300 mb-10">Explore our delicious menu below.</p>
     <div id="menuContainer" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
       <p class="text-gray-400 col-span-full text-center">Loading menu...</p>
+    </div>
+    
+    <!-- Reviews Section -->
+    <div class="mt-16 glass p-6 rounded-2xl shadow-xl max-w-4xl mx-auto">
+      <h3 class="text-2xl font-bold text-white mb-6">Reviews & Ratings ⭐</h3>
+      
+      <!-- Existing Reviews -->
+      <div id="reviewsList" class="space-y-4 mb-8 max-h-80 overflow-y-auto pr-2">
+        <p class="text-gray-400">Loading reviews...</p>
+      </div>
+
+      <!-- Add Review Form -->
+      <div class="border-t border-gray-600/50 pt-6">
+        <h4 class="text-lg font-semibold text-white mb-3">Write a Review</h4>
+        <div class="flex gap-1 mb-3" id="starRating">
+          <span class="text-3xl cursor-pointer text-gray-500 star-btn transition" data-value="1">★</span>
+          <span class="text-3xl cursor-pointer text-gray-500 star-btn transition" data-value="2">★</span>
+          <span class="text-3xl cursor-pointer text-gray-500 star-btn transition" data-value="3">★</span>
+          <span class="text-3xl cursor-pointer text-gray-500 star-btn transition" data-value="4">★</span>
+          <span class="text-3xl cursor-pointer text-gray-500 star-btn transition" data-value="5">★</span>
+        </div>
+        <textarea id="reviewText" rows="3" class="w-full bg-black/30 text-white rounded-lg p-3 border border-gray-600 focus:outline-none focus:border-pink-500 mb-3 transition placeholder-gray-500" placeholder="What did you think about this place?"></textarea>
+        <button id="submitReviewBtn" class="btn-primary px-6 py-2 rounded-lg text-sm w-full md:w-auto shadow-lg hover:shadow-pink-500/30">Submit Review</button>
+      </div>
     </div>
   </main>
 
