@@ -87,26 +87,66 @@
           const date = o.createdAt?.toDate().toLocaleDateString('en-IN',{
             day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'
           }) || 'Just now';
-          const statusClass = statusColors[o.status] || 'bg-gray-500';
           const itemsList   = (o.items||[]).map(i=>`${i.name} ×${i.qty}`).join(', ');
 
+          // Determine timeline state
+          const statusMap = { 'placed': 0, 'preparing': 1, 'out for delivery': 2, 'delivered': 3 };
+          const currentStage = statusMap[(o.status || 'placed').toLowerCase()] || 0;
+          
+          let progressWidth = 0;
+          if(currentStage === 0) progressWidth = 0;
+          if(currentStage === 1) progressWidth = 33;
+          if(currentStage === 2) progressWidth = 66;
+          if(currentStage === 3) progressWidth = 100;
+
+          const getStepClass = (stepIndex) => {
+            if (currentStage >= stepIndex) return "bg-pink-500 text-white shadow-[0_0_10px_rgba(236,72,153,0.8)]";
+            return "bg-gray-700 text-gray-400";
+          };
+
           const card = document.createElement('div');
-          card.className='glass rounded-2xl p-5';
+          card.className='glass rounded-2xl p-5 mb-4';
           card.innerHTML=`
-            <div class="flex justify-between items-start mb-3">
+            <div class="flex justify-between items-start mb-4">
               <div class="flex-1 mr-3">
                 <p class="text-xs text-gray-400 mb-1">${date}</p>
                 <p class="text-sm text-gray-200 leading-relaxed">${itemsList}</p>
               </div>
-              <span class="text-xs font-semibold px-3 py-1 rounded-full ${statusClass} text-white capitalize whitespace-nowrap">
-                ${o.status||'placed'}
-              </span>
+              <span class="font-bold text-yellow-300">₹${o.total||0}</span>
             </div>
+
+            <!-- Visual Timeline -->
+            <div class="mb-5 px-2">
+              <div class="flex items-center justify-between relative z-0">
+                <!-- Connecting line background -->
+                <div class="absolute left-0 top-3 w-full h-1 bg-white/10 -z-10 rounded-full"></div>
+                <!-- Connecting line progress -->
+                <div class="absolute left-0 top-3 h-1 bg-gradient-to-r from-pink-500 to-yellow-400 -z-10 rounded-full transition-all duration-1000" style="width: ${progressWidth}%"></div>
+                
+                <!-- Steps -->
+                <div class="flex flex-col items-center">
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors duration-300 ${getStepClass(0)}">✓</div>
+                  <span class="text-[10px] mt-1 ${currentStage >= 0 ? 'text-pink-300' : 'text-gray-400'} font-semibold">Placed</span>
+                </div>
+                <div class="flex flex-col items-center">
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors duration-300 ${getStepClass(1)}">🍳</div>
+                  <span class="text-[10px] mt-1 ${currentStage >= 1 ? 'text-pink-300' : 'text-gray-400'} font-semibold">Preparing</span>
+                </div>
+                <div class="flex flex-col items-center">
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors duration-300 ${getStepClass(2)}">🛵</div>
+                  <span class="text-[10px] mt-1 ${currentStage >= 2 ? 'text-pink-300' : 'text-gray-400'} font-semibold">On the way</span>
+                </div>
+                <div class="flex flex-col items-center">
+                  <div class="w-6 h-6 rounded-full flex items-center justify-center text-xs transition-colors duration-300 ${getStepClass(3)}">🎉</div>
+                  <span class="text-[10px] mt-1 ${currentStage >= 3 ? 'text-pink-300' : 'text-gray-400'} font-semibold">Delivered</span>
+                </div>
+              </div>
+            </div>
+
             <div class="flex justify-between items-center border-t border-white/10 pt-3">
-              <span class="text-sm text-gray-300 truncate max-w-xs">📍 ${o.address||'—'}</span>
+              <span class="text-sm text-gray-300 truncate max-w-[200px]" title="${o.address||'—'}">📍 ${o.address||'—'}</span>
               <div class="flex items-center gap-3">
-                <span class="font-bold text-yellow-300">₹${o.total||0}</span>
-                <button class="reorderBtn bg-gradient-to-r from-pink-500 to-yellow-400 text-black text-xs font-bold px-3 py-1.5 rounded-full hover:scale-105 transition shadow-lg">Reorder</button>
+                <button class="reorderBtn bg-gradient-to-r from-pink-500 to-yellow-400 text-black text-xs font-bold px-4 py-2 rounded-full hover:scale-105 transition shadow-[0_4px_14px_0_rgba(236,72,153,0.39)]">Reorder</button>
               </div>
             </div>`;
           
