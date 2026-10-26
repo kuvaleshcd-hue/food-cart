@@ -26,6 +26,7 @@ export function addToCart(item) {
 
 export function clearCart() {
   cart = {};
+  localStorage.removeItem('demoAppliedCoupon');
   updateCartUI();
   saveCart();
 }
@@ -37,10 +38,10 @@ export function updateCartUI() {
   if (!itemsDiv) return;
 
   itemsDiv.innerHTML = '';
-  let total = 0, count = 0;
+  let subtotal = 0, count = 0;
 
   Object.values(cart).forEach(it => {
-    total += it.price * it.qty;
+    subtotal += it.price * it.qty;
     count += it.qty;
     const row = document.createElement('div');
     row.className = 'flex justify-between items-center text-sm';
@@ -48,7 +49,14 @@ export function updateCartUI() {
     itemsDiv.appendChild(row);
   });
 
-  if (totalEl) totalEl.textContent = total;
+  let grandTotal = subtotal;
+  const appliedCode = localStorage.getItem('demoAppliedCoupon');
+  if (appliedCode && window.FoodCartCoupons) {
+    const bill = window.FoodCartCoupons.calculateBill(subtotal, appliedCode);
+    grandTotal = bill.grandTotal;
+  }
+
+  if (totalEl) totalEl.textContent = grandTotal;
   if (countEl) countEl.textContent = count;
 }
 

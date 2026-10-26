@@ -7,6 +7,7 @@
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/gsap@3/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <style>
     body { font-family:'Inter',sans-serif; background:linear-gradient(to bottom right,#828282,#898787); color:#f5f5f5; min-height:100vh; }
     .glass { background:rgba(255,255,255,0.15); backdrop-filter:blur(16px); border:1px solid rgba(255,255,255,0.25); }
@@ -22,6 +23,33 @@
     @keyframes glow { from{box-shadow:0 0 5px #ff6ec7,0 0 15px #ffd1d1;} to{box-shadow:0 0 15px #ff6ec7,0 0 35px #ffd1d1;} }
     #paymentDetails,#paymentDetails * { position:relative; z-index:50; pointer-events:auto !important; }
     #statusModal.hidden { display:none !important; pointer-events:none !important; }
+
+    /* Coupons & Promo system styling */
+    .coupon-ticket {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1.5px dashed rgba(244, 114, 182, 0.5);
+      position: relative;
+      transition: all 0.25s ease;
+    }
+    .coupon-ticket:hover {
+      background: rgba(255, 255, 255, 0.14);
+      border-color: #f472b6;
+      transform: translateY(-2px);
+    }
+    .badge-pill {
+      background: linear-gradient(90deg, #ec4899, #f59e0b);
+      color: #000;
+      font-weight: 700;
+      font-size: 0.65rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .discount-highlight {
+      color: #34d399;
+      text-shadow: 0 0 12px rgba(52, 211, 153, 0.4);
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -45,9 +73,95 @@
     <div id="cartContainer" class="max-w-3xl mx-auto glass p-6 rounded-2xl shadow-xl neon-box">
       <div id="cartItems" class="divide-y divide-gray-400/30"></div>
 
-      <div class="flex justify-between mt-6 text-lg font-semibold">
-        <span>Total:</span>
-        <span>₹<span id="cartTotal">0</span></span>
+      <!-- 🏷️ COUPONS & PROMO CODES SECTION -->
+      <div id="couponSection" class="mt-6 pt-6 border-t border-white/10">
+        <div class="flex items-center justify-between mb-3">
+          <label class="text-base font-bold text-white flex items-center gap-2">
+            <span>🏷️</span> Apply Coupon & Save More
+          </label>
+          <button id="toggleOffersBtn" type="button" class="text-xs text-pink-300 hover:text-pink-200 underline">
+            View All Offers (5)
+          </button>
+        </div>
+
+        <!-- Promo Code Input Group -->
+        <div class="flex gap-2">
+          <input
+            id="couponInput"
+            type="text"
+            placeholder="ENTER PROMO CODE (e.g. WELCOME30)"
+            class="uppercase tracking-wider font-semibold"
+            style="letter-spacing: 0.08em;"
+          />
+          <button
+            id="applyCouponBtn"
+            type="button"
+            class="px-5 py-2 rounded-xl bg-gradient-to-r from-pink-500 to-yellow-400 text-black font-bold hover:scale-105 transition shadow-lg shrink-0"
+          >
+            Apply
+          </button>
+        </div>
+
+        <!-- Inline Feedback Msg -->
+        <div id="couponMsg" class="text-sm mt-2 font-medium hidden"></div>
+
+        <!-- Applied Coupon Chip -->
+        <div id="appliedCouponChip" class="hidden mt-3 p-3 rounded-xl bg-emerald-500/15 border border-emerald-400/40 flex items-center justify-between">
+          <div class="flex items-center gap-2.5">
+            <span class="text-xl">🎉</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <span id="appliedCodeText" class="font-extrabold text-emerald-300 tracking-wider"></span>
+                <span class="badge-pill bg-emerald-400 text-emerald-950 font-black">Applied</span>
+              </div>
+              <p id="appliedDescText" class="text-xs text-emerald-200/90 mt-0.5"></p>
+            </div>
+          </div>
+          <button id="removeCouponBtn" type="button" class="text-xs text-gray-300 hover:text-red-400 p-1.5 rounded-lg hover:bg-white/10 font-bold transition">
+            Remove ✕
+          </button>
+        </div>
+
+        <!-- Available Offers Drawer / Grid -->
+        <div id="availableOffers" class="mt-4 space-y-2.5"></div>
+      </div>
+
+      <!-- 🧾 ITEMIZED BILL BREAKDOWN -->
+      <div class="mt-6 pt-5 border-t border-white/15 space-y-2.5 text-sm">
+        <h4 class="text-xs uppercase tracking-wider text-pink-300 font-extrabold mb-1">Bill Summary</h4>
+        
+        <div class="flex justify-between items-center text-gray-200">
+          <span>Items Subtotal</span>
+          <span>₹<span id="billSubtotal">0</span></span>
+        </div>
+
+        <div class="flex justify-between items-center text-gray-200">
+          <div class="flex items-center gap-1.5">
+            <span>Delivery Fee</span>
+            <span id="deliveryFreeTag" class="hidden text-[10px] bg-green-500/20 text-green-300 px-1.5 py-0.5 rounded font-bold">FREE</span>
+          </div>
+          <span id="billDelivery">₹40</span>
+        </div>
+
+        <div class="flex justify-between items-center text-gray-200">
+          <span>Packaging & Service</span>
+          <span id="billPackaging">₹10</span>
+        </div>
+
+        <div id="discountRow" class="flex justify-between items-center discount-highlight font-semibold hidden">
+          <span class="flex items-center gap-1">🏷️ Coupon Savings (<span id="discountCodeName"></span>)</span>
+          <span>-₹<span id="billDiscount">0</span></span>
+        </div>
+
+        <div class="pt-3 border-t border-white/20 flex justify-between items-center text-xl font-extrabold text-white">
+          <span>To Pay</span>
+          <span class="neon-text">₹<span id="cartTotal">0</span></span>
+        </div>
+
+        <!-- Dynamic Savings Alert -->
+        <div id="savingsBanner" class="hidden mt-3 p-3 rounded-xl bg-gradient-to-r from-emerald-500/20 to-teal-500/20 border border-emerald-400/40 text-emerald-300 text-sm font-semibold text-center flex items-center justify-center gap-2">
+          <span>🎉</span> You are saving <strong class="underline decoration-emerald-400">₹<span id="savingsAmount">0</span></strong> on this order!
+        </div>
       </div>
 
       <div class="mt-6">
@@ -95,6 +209,15 @@
     import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, doc, onSnapshot, serverTimestamp }
       from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+    import {
+      AVAILABLE_COUPONS,
+      validateCoupon,
+      calculateBill,
+      getSavedCoupon,
+      saveAppliedCoupon,
+      clearAppliedCoupon,
+      triggerConfetti
+    } from "./coupons.js";
 
     const firebaseConfig = {
       apiKey:            "AIzaSyCZQl-RwRK7KPLpVDK8a1WzbptcX8HyBzU",
@@ -119,34 +242,220 @@
     let cart = JSON.parse(localStorage.getItem('demoCart') || '{}');
     function saveCart(){ localStorage.setItem('demoCart', JSON.stringify(cart)); }
 
+    // Active coupon state
+    let activeCoupon = getSavedCoupon();
+    let offersCollapsed = true;
+
+    function renderAvailableOffers(subtotal) {
+      const container = document.getElementById('availableOffers');
+      if (!container) return;
+      container.innerHTML = '';
+
+      AVAILABLE_COUPONS.forEach(cp => {
+        const check = validateCoupon(cp.code, subtotal);
+        const isCurrent = activeCoupon && activeCoupon.toUpperCase() === cp.code.toUpperCase();
+        const card = document.createElement('div');
+        card.className = `coupon-ticket p-3 rounded-xl flex items-center justify-between gap-3 ${isCurrent ? 'ring-2 ring-emerald-400 bg-emerald-500/10' : ''}`;
+
+        card.innerHTML = `
+          <div class="flex items-start gap-2.5">
+            <span class="text-2xl mt-0.5">${cp.icon}</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-extrabold text-white tracking-wider text-sm">${cp.code}</span>
+                <span class="badge-pill">${cp.badge}</span>
+              </div>
+              <p class="text-xs text-pink-200 font-semibold mt-0.5">${cp.title}</p>
+              <p class="text-[11px] text-gray-300">${cp.description} ${cp.minOrder > 0 ? `(Min: ₹${cp.minOrder})` : ''}</p>
+            </div>
+          </div>
+          <div>
+            ${isCurrent
+              ? `<span class="text-xs font-bold text-emerald-300 px-3 py-1.5 rounded-lg bg-emerald-500/20 border border-emerald-400/40">Active ✓</span>`
+              : `<button
+                  type="button"
+                  data-code="${cp.code}"
+                  class="apply-offer-btn text-xs font-bold px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white hover:text-pink-300 transition ${!check.valid ? 'opacity-60' : ''}">
+                  Apply
+                </button>`
+            }
+          </div>
+        `;
+        container.appendChild(card);
+      });
+
+      // Wire apply buttons on cards
+      container.querySelectorAll('.apply-offer-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.getAttribute('data-code');
+          applyCode(code);
+        });
+      });
+    }
+
+    function applyCode(code) {
+      const subtotal = Object.values(cart).reduce((s, it) => s + it.price * it.qty, 0);
+      const res = validateCoupon(code, subtotal);
+      const msgEl = document.getElementById('couponMsg');
+
+      if (!res.valid) {
+        msgEl.className = 'text-sm mt-2 font-medium text-red-400';
+        msgEl.textContent = res.reason;
+        msgEl.classList.remove('hidden');
+        return;
+      }
+
+      activeCoupon = res.coupon.code;
+      saveAppliedCoupon(activeCoupon);
+
+      msgEl.className = 'text-sm mt-2 font-medium text-emerald-400';
+      msgEl.textContent = `Coupon "${activeCoupon}" applied! You save ₹${res.discount}.`;
+      msgEl.classList.remove('hidden');
+
+      triggerConfetti();
+      updateCartUI();
+    }
+
+    function removeActiveCoupon() {
+      activeCoupon = null;
+      clearAppliedCoupon();
+      const msgEl = document.getElementById('couponMsg');
+      if (msgEl) {
+        msgEl.className = 'text-sm mt-2 font-medium text-yellow-300';
+        msgEl.textContent = 'Coupon removed.';
+        msgEl.classList.remove('hidden');
+        setTimeout(() => msgEl.classList.add('hidden'), 2500);
+      }
+      updateCartUI();
+    }
+
     function updateCartUI(){
       const itemsDiv = document.getElementById('cartItems');
       const totalEl  = document.getElementById('cartTotal');
       const emptyMsg = document.getElementById('emptyMsg');
+      const cartCont = document.getElementById('cartContainer');
       itemsDiv.innerHTML = '';
-      let total = 0;
+      let subtotal = 0;
       const items = Object.values(cart);
+
       emptyMsg.classList.toggle('hidden', items.length > 0);
+      cartCont.classList.toggle('hidden', items.length === 0);
+
       items.forEach(it => {
-        total += it.price * it.qty;
+        subtotal += it.price * it.qty;
         const row = document.createElement('div');
         row.className = "flex justify-between items-center py-3";
         row.innerHTML = `
           <div>
-            <h3 class="font-semibold text-lg">${it.name}</h3>
+            <h3 class="font-semibold text-lg text-white">${it.name}</h3>
             <p class="text-sm text-gray-300">₹${it.price} × ${it.qty}</p>
           </div>
           <div class="flex items-center gap-3">
-            <button class="decrease bg-gray-700 text-white px-2 rounded" data-id="${it.id}">−</button>
-            <span>${it.qty}</span>
-            <button class="increase bg-gray-700 text-white px-2 rounded" data-id="${it.id}">+</button>
+            <button class="decrease bg-gray-700 hover:bg-gray-600 text-white w-7 h-7 rounded flex items-center justify-center font-bold" data-id="${it.id}">−</button>
+            <span class="font-semibold text-white">${it.qty}</span>
+            <button class="increase bg-gray-700 hover:bg-gray-600 text-white w-7 h-7 rounded flex items-center justify-center font-bold" data-id="${it.id}">+</button>
           </div>`;
         itemsDiv.appendChild(row);
       });
-      totalEl.textContent = total;
+
+      // Calculate bill details with coupons engine
+      const bill = calculateBill(subtotal, activeCoupon);
+
+      // Validate if previously applied coupon is still eligible
+      if (activeCoupon) {
+        const check = validateCoupon(activeCoupon, subtotal);
+        if (!check.valid) {
+          activeCoupon = null;
+          clearAppliedCoupon();
+          const msgEl = document.getElementById('couponMsg');
+          if (msgEl) {
+            msgEl.className = 'text-sm mt-2 font-medium text-amber-400';
+            msgEl.textContent = check.reason;
+            msgEl.classList.remove('hidden');
+          }
+        }
+      }
+
+      // Update Breakdown DOM elements
+      const subtotalEl = document.getElementById('billSubtotal');
+      const deliveryEl = document.getElementById('billDelivery');
+      const deliveryFreeTag = document.getElementById('deliveryFreeTag');
+      const packagingEl = document.getElementById('billPackaging');
+      const discountRow = document.getElementById('discountRow');
+      const discountEl = document.getElementById('billDiscount');
+      const discountCodeName = document.getElementById('discountCodeName');
+      const savingsBanner = document.getElementById('savingsBanner');
+      const savingsAmount = document.getElementById('savingsAmount');
+      const chip = document.getElementById('appliedCouponChip');
+
+      if (subtotalEl) subtotalEl.textContent = bill.subtotal;
+      if (packagingEl) packagingEl.textContent = bill.packagingFee;
+
+      if (deliveryEl) {
+        if (bill.deliveryFee === 0 && bill.subtotal > 0) {
+          deliveryEl.innerHTML = `<span class="line-through text-gray-400 mr-1.5">₹40</span><span class="text-emerald-400 font-bold">₹0</span>`;
+          if (deliveryFreeTag) deliveryFreeTag.classList.remove('hidden');
+        } else {
+          deliveryEl.textContent = `₹${bill.deliveryFee}`;
+          if (deliveryFreeTag) deliveryFreeTag.classList.add('hidden');
+        }
+      }
+
+      if (bill.discount > 0 && bill.appliedCoupon) {
+        if (discountRow) discountRow.classList.remove('hidden');
+        if (discountEl) discountEl.textContent = bill.discount;
+        if (discountCodeName) discountCodeName.textContent = bill.appliedCoupon.code;
+
+        if (chip) {
+          chip.classList.remove('hidden');
+          document.getElementById('appliedCodeText').textContent = bill.appliedCoupon.code;
+          document.getElementById('appliedDescText').textContent = `${bill.appliedCoupon.title} (Saved ₹${bill.discount})`;
+        }
+      } else {
+        if (discountRow) discountRow.classList.add('hidden');
+        if (chip) chip.classList.add('hidden');
+      }
+
+      if (bill.savings > 0) {
+        if (savingsBanner) savingsBanner.classList.remove('hidden');
+        if (savingsAmount) savingsAmount.textContent = bill.savings;
+      } else {
+        if (savingsBanner) savingsBanner.classList.add('hidden');
+      }
+
+      if (totalEl) totalEl.textContent = bill.grandTotal;
+
+      renderAvailableOffers(subtotal);
       saveCart();
       renderPaymentForm();
     }
+
+    // Manual coupon input form
+    document.getElementById('applyCouponBtn')?.addEventListener('click', () => {
+      const code = document.getElementById('couponInput')?.value.trim();
+      applyCode(code);
+    });
+
+    document.getElementById('couponInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyCode(e.target.value.trim());
+      }
+    });
+
+    document.getElementById('removeCouponBtn')?.addEventListener('click', removeActiveCoupon);
+
+    document.getElementById('toggleOffersBtn')?.addEventListener('click', () => {
+      offersCollapsed = !offersCollapsed;
+      const offersDiv = document.getElementById('availableOffers');
+      const btn = document.getElementById('toggleOffersBtn');
+      if (offersDiv) {
+        offersDiv.classList.toggle('hidden', offersCollapsed);
+      }
+      if (btn) {
+        btn.textContent = offersCollapsed ? 'View All Offers (5)' : 'Hide Offers ▲';
+      }
+    });
 
     function renderPaymentForm(){
       const pm   = document.getElementById('paymentMethod').value;
@@ -173,7 +482,12 @@
     }
 
     document.getElementById('paymentMethod').addEventListener('change', renderPaymentForm);
-    document.getElementById('clearCart').addEventListener('click', () => { cart={}; updateCartUI(); });
+    document.getElementById('clearCart').addEventListener('click', () => {
+      cart={};
+      activeCoupon = null;
+      clearAppliedCoupon();
+      updateCartUI();
+    });
     document.addEventListener('click', (e) => {
       if(e.target.classList.contains('increase')){ const id=e.target.dataset.id; cart[id].qty++; }
       else if(e.target.classList.contains('decrease')){ const id=e.target.dataset.id; cart[id].qty--; if(cart[id].qty<=0) delete cart[id]; }
@@ -198,18 +512,25 @@
         if(!cardNumber||!cardExpiry||!cardCVV) return alert("Please fill all card details!");
       }
 
+      const subtotal = Object.values(cart).reduce((s,i)=>s+i.price*i.qty,0);
+      const bill = calculateBill(subtotal, activeCoupon);
+
+      triggerConfetti();
       alert("Payment successful ✅");
 
-      // ✅ Save to Firestore
+      // ✅ Save to Firestore with coupon discount breakdown
       let orderId = null;
       if(currentUser){
         try{
-          const total = Object.values(cart).reduce((s,i)=>s+i.price*i.qty,0);
           const ref = await addDoc(collection(db,'orders'),{
             userId:        currentUser.uid,
             userEmail:     currentUser.email,
             items:         Object.values(cart),
-            total,
+            subtotal:      bill.subtotal,
+            deliveryFee:   bill.deliveryFee,
+            discount:      bill.discount,
+            couponCode:    bill.appliedCoupon ? bill.appliedCoupon.code : null,
+            total:         bill.grandTotal,
             address,
             paymentMethod,
             status:        'preparing',
@@ -220,7 +541,11 @@
         } catch(e){ console.error('Order save failed:', e); }
       }
 
-      cart = {}; saveCart(); updateCartUI();
+      cart = {};
+      activeCoupon = null;
+      clearAppliedCoupon();
+      saveCart();
+      updateCartUI();
       runOrderStatus(orderId);
     });
 

@@ -10,8 +10,9 @@ The project uses **Firebase** for backend services and provides separate pages f
 * 🍕 Browse Food Menu
 * 🛒 Add food items to Cart
 * ➕ Increase or decrease item quantity
+* 🏷️ Coupons & Promo Codes System (WELCOME30, FEAST50, FREEDEL with live savings & confetti)
 * 🗑️ Remove items from Cart
-* 📦 Manage and view Orders
+* 📦 Manage and view Orders (with coupon savings badges)
 * 👤 User Profile
 * 🏨 Browse Hotels/Food Providers
 * 🔧 Admin Food Upload
@@ -51,6 +52,8 @@ food-cart/
 ├── api.js
 ├── cart.html
 ├── cart.js
+├── coupons.js
+├── favorites.html
 ├── firebase.js
 ├── hotels.html
 ├── index.html
@@ -64,21 +67,22 @@ food-cart/
 
 ## 📄 Main Pages
 
-| File                | Description                   |
-| ------------------- | ----------------------------- |
-| `index.html`        | Home page                     |
-| `login.html`        | User login                    |
-| `register.html`     | User registration             |
-| `menu.html`         | Displays available food items |
-| `cart.html`         | Shopping cart                 |
-| `orders.html`       | User orders                   |
-| `profile.html`      | User profile                  |
-| `hotels.html`       | Hotels/food providers         |
-| `admin-upload.html` | Admin food upload             |
-| `firebase.js`       | Firebase configuration        |
-| `api.js`            | API-related functionality     |
-| `cart.js`           | Cart functionality            |
-| `sw.js`             | Service worker                |
+| File                | Description                                       |
+| ------------------- | ------------------------------------------------- |
+| `index.html`        | Home page with menu, cart & checkout modal        |
+| `cart.html`         | Shopping cart & checkout with Coupons Engine      |
+| `coupons.js`        | Coupons & Promo Codes engine, validation & logic  |
+| `orders.html`       | User orders history with coupon savings badges    |
+| `login.html`        | User login                                        |
+| `register.html`     | User registration                                 |
+| `menu.html`         | Displays available food items                     |
+| `profile.html`      | User profile                                      |
+| `hotels.html`       | Hotels/food providers                             |
+| `admin-upload.html` | Admin food upload                                 |
+| `firebase.js`       | Firebase configuration                            |
+| `api.js`            | API-related functionality                         |
+| `cart.js`           | Cart utility and drawer sync                      |
+| `sw.js`             | Service worker                                    |
 
 ## ⚙️ Installation
 
